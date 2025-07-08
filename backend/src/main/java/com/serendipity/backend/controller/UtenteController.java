@@ -66,7 +66,7 @@ public class UtenteController {
      * @return un messaggio di risposta con lo stato e il DTO dell'utente trovato
      */
     @PreAuthorize("hasRole('ADMIN')")
-    @GetMapping("/{codiceFiscale}")
+    @GetMapping("/codiceFiscale/{codiceFiscale}")
     public ResponseEntity<ResponseMessage> getByCodiceFiscale(@PathVariable String codiceFiscale) {
         ResponseMessage response = utenteService.findByCodiceFiscale(codiceFiscale);
         return ResponseEntity.status(response.getStatus()).body(response);
