@@ -1,6 +1,6 @@
 package com.serendipity.backend.controller;
 
-import com.serendipity.backend.model.dto.CreaTimesheetRigaDto;
+import com.serendipity.backend.model.dto.create.CreaTimesheetRigaDto;
 import com.serendipity.backend.model.dto.ResponseMessage;
 import com.serendipity.backend.model.dto.TimesheetRigaDto;
 import com.serendipity.backend.service.TimesheetRigaService;

@@ -1,7 +1,7 @@
 package com.serendipity.backend.service;
 
 import com.serendipity.backend.mapper.UtenteMapper;
-import com.serendipity.backend.model.dto.CreaUtenteDto;
+import com.serendipity.backend.model.dto.create.CreaUtenteDto;
 import com.serendipity.backend.model.dto.UtenteDto;
 import com.serendipity.backend.model.entity.Utente;
 import com.serendipity.backend.repository.UtenteRepository;

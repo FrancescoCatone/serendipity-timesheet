@@ -1,4 +1,4 @@
-package com.serendipity.backend.model.dto;
+package com.serendipity.backend.model.dto.auth;
 
 public class AuthResponse {
     private String token;

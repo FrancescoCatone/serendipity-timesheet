@@ -2,7 +2,7 @@ package com.serendipity.backend.controller;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.serendipity.backend.model.dto.CreaUtenteDto;
+import com.serendipity.backend.model.dto.create.CreaUtenteDto;
 import com.serendipity.backend.model.enums.Ruolo;
 import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.Test;

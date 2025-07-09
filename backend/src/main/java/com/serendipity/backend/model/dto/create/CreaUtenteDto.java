@@ -1,4 +1,4 @@
-package com.serendipity.backend.model.dto;
+package com.serendipity.backend.model.dto.create;
 
 import com.serendipity.backend.model.enums.Ruolo;
 import jakarta.validation.constraints.*;

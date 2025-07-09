@@ -1,6 +1,6 @@
 package com.serendipity.backend.controller;
 
-import com.serendipity.backend.model.dto.CreaUtenteDto;
+import com.serendipity.backend.model.dto.create.CreaUtenteDto;
 import com.serendipity.backend.model.dto.ResponseMessage;
 import com.serendipity.backend.model.dto.UtenteDto;
 import com.serendipity.backend.service.UtenteService;

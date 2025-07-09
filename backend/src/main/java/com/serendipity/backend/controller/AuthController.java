@@ -1,7 +1,7 @@
 package com.serendipity.backend.controller;
 
-import com.serendipity.backend.model.dto.AuthRequest;
-import com.serendipity.backend.model.dto.AuthResponse;
+import com.serendipity.backend.model.dto.auth.AuthRequest;
+import com.serendipity.backend.model.dto.auth.AuthResponse;
 import com.serendipity.backend.security.JwtService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;

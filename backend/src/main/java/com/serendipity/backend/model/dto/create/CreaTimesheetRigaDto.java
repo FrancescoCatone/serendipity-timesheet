@@ -1,4 +1,4 @@
-package com.serendipity.backend.model.dto;
+package com.serendipity.backend.model.dto.create;
 
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Max;

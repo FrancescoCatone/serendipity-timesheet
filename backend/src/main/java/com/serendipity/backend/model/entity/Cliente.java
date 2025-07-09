@@ -17,7 +17,7 @@ public class Cliente {
     private double tariffaOraria; // quanto paga il cliente ad ora
 
     @OneToMany(mappedBy = "cliente", cascade = CascadeType.ALL)
-    private List<TimesheetRiga> righe = new ArrayList<>();
+    private List<TimesheetRiga> timesheetRighe = new ArrayList<>();
 
     public Long getId() {
         return id;
@@ -43,12 +43,12 @@ public class Cliente {
         this.tariffaOraria = tariffaOraria;
     }
 
-    public List<TimesheetRiga> getRighe() {
-        return righe;
+    public List<TimesheetRiga> getTimesheetRighe() {
+        return timesheetRighe;
     }
 
-    public void setRighe(List<TimesheetRiga> righe) {
-        this.righe = righe;
+    public void setTimesheetRighe(List<TimesheetRiga> righe) {
+        this.timesheetRighe = righe;
     }
 
     public Cliente() {

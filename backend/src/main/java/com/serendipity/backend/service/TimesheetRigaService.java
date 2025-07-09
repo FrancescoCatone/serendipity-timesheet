@@ -1,7 +1,7 @@
 package com.serendipity.backend.service;
 
 import com.serendipity.backend.mapper.TimesheetRigaMapper;
-import com.serendipity.backend.model.dto.CreaTimesheetRigaDto;
+import com.serendipity.backend.model.dto.create.CreaTimesheetRigaDto;
 import com.serendipity.backend.model.dto.TimesheetRigaDto;
 import com.serendipity.backend.model.entity.TimesheetRiga;
 import com.serendipity.backend.repository.ClienteRepository;
