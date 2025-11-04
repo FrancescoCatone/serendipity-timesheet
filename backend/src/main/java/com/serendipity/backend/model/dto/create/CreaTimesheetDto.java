@@ -1,7 +1,8 @@
 package com.serendipity.backend.model.dto.create;
 
-import jakarta.validation.constraints.*;
-import java.time.LocalDate;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotNull;
 
 public class CreaTimesheetDto {
 
@@ -11,9 +12,6 @@ public class CreaTimesheetDto {
 
     @Min(value = 2000)
     private int anno;
-
-    @NotNull(message = "La data di compilazione è obbligatoria")
-    private LocalDate dataCompilazione;
 
     @NotNull(message = "L'ID utente è obbligatorio")
     private Long utenteId;
@@ -32,14 +30,6 @@ public class CreaTimesheetDto {
 
     public void setAnno(int anno) {
         this.anno = anno;
-    }
-
-    public LocalDate getDataCompilazione() {
-        return dataCompilazione;
-    }
-
-    public void setDataCompilazione(LocalDate dataCompilazione) {
-        this.dataCompilazione = dataCompilazione;
     }
 
     public Long getUtenteId() {
