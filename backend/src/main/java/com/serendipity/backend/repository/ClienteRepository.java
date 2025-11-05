@@ -12,6 +12,8 @@ import java.util.List;
 public interface ClienteRepository extends JpaRepository<Cliente, Long> {
     Cliente findByNome(String nome);
 
+    boolean existsByNomeIgnoreCase(String nome);
+
     @Query("""
             SELECT u.id, u.nome, u.cognome, SUM(tr.orario)
             FROM TimesheetRiga tr

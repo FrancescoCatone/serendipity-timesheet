@@ -7,6 +7,7 @@ import com.serendipity.backend.model.entity.Cliente;
 import com.serendipity.backend.repository.ClienteRepository;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -49,9 +50,17 @@ public class ClienteService {
      *
      * @param dto Dati del cliente da creare
      * @return ClienteDto creato
+     * @throws DataIntegrityViolationException se esiste già un cliente con lo stesso nome
      */
     public ClienteDto create(CreaClienteDto dto) {
+        String nomeNorm = dto.getNome().trim();
+        if (clienteRepository.existsByNomeIgnoreCase(nomeNorm)) {
+            throw new DataIntegrityViolationException(
+                    "Esiste già un cliente con nome: " + nomeNorm
+            );
+        }
         Cliente cliente = clienteMapper.fromCreateDto(dto);
+        cliente.setNome(nomeNorm);
         return clienteMapper.toDto(clienteRepository.save(cliente));
     }
 
@@ -59,17 +68,27 @@ public class ClienteService {
      * Aggiorna un cliente esistente.
      *
      * @param id  ID del cliente da aggiornare
-     * @param dto Nuovi dati del cliente
+     * @param dto Dati aggiornati del cliente
      * @return ClienteDto aggiornato
-     * @throws EntityNotFoundException se il cliente non esiste
+     * @throws EntityNotFoundException        se il cliente non esiste
+     * @throws DataIntegrityViolationException se esiste già un cliente con lo stesso nome
      */
     public ClienteDto update(Long id, CreaClienteDto dto) {
         Cliente cliente = clienteRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Cliente non trovato con ID: " + id));
 
-        cliente.setNome(dto.getNome());
-        cliente.setTariffaOraria(dto.getTariffaOraria());
+        String nuovoNome = dto.getNome().trim();
 
+        // se il nome cambia, verifica unicità (case-insensitive)
+        if (!cliente.getNome().equalsIgnoreCase(nuovoNome)
+                && clienteRepository.existsByNomeIgnoreCase(nuovoNome)) {
+            throw new DataIntegrityViolationException(
+                    "Esiste già un cliente con nome: " + nuovoNome
+            );
+        }
+
+        cliente.setNome(nuovoNome);
+        cliente.setTariffaOraria(dto.getTariffaOraria());
         return clienteMapper.toDto(clienteRepository.save(cliente));
     }
 

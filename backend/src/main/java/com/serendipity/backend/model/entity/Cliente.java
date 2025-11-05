@@ -6,14 +6,17 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
+@Table(name = "cliente")
 public class Cliente {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(nullable = false)
     private String nome;
 
+    @Column(nullable = false)
     private double tariffaOraria; // quanto paga il cliente ad ora
 
     @OneToMany(mappedBy = "cliente", cascade = CascadeType.ALL)
