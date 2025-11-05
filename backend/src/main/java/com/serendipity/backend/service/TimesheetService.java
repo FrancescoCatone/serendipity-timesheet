@@ -287,6 +287,7 @@ public class TimesheetService {
         return mapper.toDto(timesheetRepository.save(ts));
     }
 
+    /* ------------------------- HELPERS ------------------------- */
 
     /**
      * Metodi di utilità per gestione sicurezza
