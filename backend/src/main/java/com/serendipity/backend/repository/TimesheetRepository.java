@@ -16,6 +16,8 @@ public interface TimesheetRepository extends JpaRepository<Timesheet, Long> {
 
     List<Timesheet> findByUtenteIdAndMeseAndAnno(Long utenteId, int mese, int anno);
 
+    boolean existsByUtenteIdAndMeseAndAnno(Long utenteId, int mese, int anno);
+
     @Query("select distinct t.anno from Timesheet t order by t.anno desc")
     List<Integer> findDistinctAnni();
 

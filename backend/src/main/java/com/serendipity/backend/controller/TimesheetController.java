@@ -27,7 +27,7 @@ public class TimesheetController {
     @PreAuthorize("hasAnyRole('ADMIN', 'DIPENDENTE')")
     @GetMapping
     public ResponseEntity<ResponseMessage> getAll() {
-        List<TimesheetDto> result = service.findAll();
+        List<TimesheetDto> result = service.findAllFiltered();
         return ResponseEntity.ok(new ResponseMessage(200, "Lista timesheet", result));
     }
 
@@ -37,7 +37,7 @@ public class TimesheetController {
      * @param id ID del timesheet da cercare
      * @return TimesheetDto se trovato
      */
-    @PreAuthorize("hasAnyRole('ADMIN', 'DIPENDENTE')")
+    @PreAuthorize("hasAnyRole('ADMIN')")
     @GetMapping("/{id}")
     public ResponseEntity<ResponseMessage> getById(@PathVariable Long id) {
         TimesheetDto dto = service.findById(id);
@@ -77,7 +77,7 @@ public class TimesheetController {
      * @param id ID del timesheet da eliminare
      * @return messaggio di conferma dell'eliminazione
      */
-    @PreAuthorize("hasAnyRole('ADMIN', 'DIPENDENTE')")
+    @PreAuthorize("hasAnyRole('ADMIN')")
     @DeleteMapping("/{id}")
     public ResponseEntity<ResponseMessage> delete(@PathVariable Long id) {
         service.delete(id);
@@ -126,16 +126,43 @@ public class TimesheetController {
         return ResponseEntity.ok(new ResponseMessage(200, "Mesi disponibili per anno", service.mesiDisponibiliPerAnno(anno)));
     }
 
+
     /**
-     * Chiude un timesheet (lo rende non più modificabile).
+     * Cambia lo stato di un timesheet a "CONFERMATO".
+     *
+     * @param id ID del timesheet da confermare
+     * @return TimesheetDto con stato aggiornato
+     */
+    @PreAuthorize("hasAnyRole('ADMIN','DIPENDENTE')")
+    @PutMapping("/{id}/conferma")
+    public ResponseEntity<ResponseMessage> conferma(@PathVariable Long id) {
+        var dto = service.conferma(id);
+        return ResponseEntity.ok(new ResponseMessage(200, "Timesheet confermato", dto));
+    }
+
+    /**
+     * Cambia lo stato di un timesheet a "APERTO".
+     *
+     * @param id ID del timesheet da riaprire
+     * @return TimesheetDto con stato aggiornato
+     */
+    @PreAuthorize("hasAnyRole('ADMIN','DIPENDENTE')")
+    @PutMapping("/{id}/riapri")
+    public ResponseEntity<ResponseMessage> riapri(@PathVariable Long id) {
+        var dto = service.riapri(id);
+        return ResponseEntity.ok(new ResponseMessage(200, "Timesheet riaperto", dto));
+    }
+
+    /**
+     * Cambia lo stato di un timesheet a "CHIUSO".
      *
      * @param id ID del timesheet da chiudere
-     * @return TimesheetDto chiuso
+     * @return TimesheetDto con stato aggiornato
      */
     @PreAuthorize("hasAnyRole('ADMIN','DIPENDENTE')")
     @PutMapping("/{id}/chiudi")
     public ResponseEntity<ResponseMessage> chiudi(@PathVariable Long id) {
-        TimesheetDto dto = service.chiudiInvia(id);
+        var dto = service.chiudi(id);
         return ResponseEntity.ok(new ResponseMessage(200, "Timesheet chiuso", dto));
     }
 
