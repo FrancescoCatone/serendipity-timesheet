@@ -27,10 +27,7 @@ public class CreaUtenteDto {
     private String email;
 
     @NotBlank(message = "La password è obbligatoria")
-    @Size(min = 8, max = 50, message = "La password deve contenere almeno 8 caratteri")
-    @Pattern(
-            regexp = "^(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]{8,}$",
-            message = "La password deve contenere almeno una maiuscola, un numero e un carattere speciale")
+    @Size(min = 6, max = 50, message = "La password deve contenere almeno 6 caratteri")
     private String password;
 
     @NotNull(message = "Il ruolo è obbligatorio")

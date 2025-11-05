@@ -1,8 +1,8 @@
 package com.serendipity.backend.controller;
 
-import com.serendipity.backend.model.dto.create.CreaUtenteDto;
 import com.serendipity.backend.model.dto.ResponseMessage;
 import com.serendipity.backend.model.dto.UtenteDto;
+import com.serendipity.backend.model.dto.create.CreaUtenteDto;
 import com.serendipity.backend.service.UtenteService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -10,7 +10,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/utenti")
@@ -36,14 +38,19 @@ public class UtenteController {
     /**
      * Recupera tutti gli utenti.
      *
-     * @return una lista di DTO contenenti i dati di tutti gli utenti
+     * @return un messaggio di risposta con lo stato e la lista di DTO degli utenti
      */
-    @PreAuthorize("hasAnyRole('ADMIN', 'DIPENDENTE')")
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping
     public ResponseEntity<ResponseMessage> getAll() {
         List<UtenteDto> utenti = utenteService.getAll();
-        ResponseMessage response = new ResponseMessage(200, "Lista utenti", utenti);
-        return ResponseEntity.ok(response);
+
+        Map<String, Object> meta = new HashMap<>();
+        meta.put("count", utenti.size());
+
+        return ResponseEntity.ok(
+                new ResponseMessage(200, "Lista utenti", utenti, meta)
+        );
     }
 
     /**

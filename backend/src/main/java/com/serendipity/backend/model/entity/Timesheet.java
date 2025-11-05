@@ -40,6 +40,11 @@ public class Timesheet {
     @OneToMany(mappedBy = "timesheet", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<TimesheetRiga> timesheetRighe = new ArrayList<>();
 
+    @PrePersist
+    void prePersist() {
+        if (stato == null) stato = TimesheetStato.APERTO;
+    }
+
     public Long getId() {
         return id;
     }

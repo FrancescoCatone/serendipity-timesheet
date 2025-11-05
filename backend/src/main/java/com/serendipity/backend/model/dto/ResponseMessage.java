@@ -1,6 +1,7 @@
 package com.serendipity.backend.model.dto;
 
 import java.time.LocalDateTime;
+import java.util.Map;
 
 public class ResponseMessage {
 
@@ -8,6 +9,7 @@ public class ResponseMessage {
     private String message;
     private LocalDateTime timestamp;
     private Object data;
+    private Map<String, Object> meta;
 
     public ResponseMessage(int status, String message) {
         this.status = status;
@@ -20,6 +22,14 @@ public class ResponseMessage {
         this.message = message;
         this.timestamp = LocalDateTime.now();
         this.data = data;
+    }
+
+    public ResponseMessage(int status, String message, Object data, Map<String, Object> meta) {
+        this.status = status;
+        this.message = message;
+        this.timestamp = LocalDateTime.now();
+        this.data = data;
+        this.meta = meta;
     }
 
     public int getStatus() {
@@ -38,6 +48,10 @@ public class ResponseMessage {
         return data;
     }
 
+    public Map<String, Object> getMeta() {
+        return meta;
+    }
+
     public void setMessage(String message) {
         this.message = message;
     }
@@ -52,5 +66,9 @@ public class ResponseMessage {
 
     public void setData(Object data) {
         this.data = data;
+    }
+
+    public void setMeta(Map<String, Object> meta) {
+        this.meta = meta;
     }
 }
