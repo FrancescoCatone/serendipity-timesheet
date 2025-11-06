@@ -2,6 +2,8 @@ package com.serendipity.backend.service;
 
 import com.serendipity.backend.mapper.TimesheetMapper;
 import com.serendipity.backend.model.dto.TimesheetDto;
+import com.serendipity.backend.model.dto.TotaleClienteDto;
+import com.serendipity.backend.model.dto.TotaliDto;
 import com.serendipity.backend.model.dto.create.CreaTimesheetDto;
 import com.serendipity.backend.model.entity.Timesheet;
 import com.serendipity.backend.model.enums.TimesheetStato;
@@ -17,6 +19,8 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.HashSet;
@@ -144,15 +148,14 @@ public class TimesheetService {
     }
 
     /**
-     * Cerca timesheet in base a mese, anno e opzionalmente utenteId.
-     * Gli utenti con ruolo ADMIN possono cercare per qualsiasi utenteId,
-     * mentre gli utenti con ruolo DIPENDENTE possono vedere solo i propri timesheet.
+     * Cerca timesheet per mese, anno e opzionalmente utente (se ADMIN).
      *
-     * @param mese     Mese del timesheet (1-12)
-     * @param anno     Anno del timesheet (es. 2023)
-     * @param utenteId (opzionale) ID dell'utente per filtrare i timesheet (solo per ADMIN)
-     * @return Lista di TimesheetDto che corrispondono ai criteri di ricerca
+     * @param mese     Mese del timesheet
+     * @param anno     Anno del timesheet
+     * @param utenteId (opzionale) ID dell'utente per filtrare (solo ADMIN)
+     * @return Lista di TimesheetDto trovati
      * @throws IllegalArgumentException se mese o anno non sono validi
+     * @throws EntityNotFoundException  se non vengono trovati timesheet corrispondenti
      */
     public List<TimesheetDto> search(Integer mese, Integer anno, Long utenteId) {
         if (mese == null || anno == null) {
@@ -166,16 +169,23 @@ public class TimesheetService {
         List<Timesheet> results;
 
         if (isAdmin) {
-            // ADMIN: se specificato un utenteId, filtra per quello. Altrimenti tutti per mese/anno.
             if (utenteId != null) {
                 results = timesheetRepository.findByUtenteIdAndMeseAndAnno(utenteId, mese, anno);
             } else {
                 results = timesheetRepository.findByMeseAndAnno(mese, anno);
             }
         } else {
-            // DIPENDENTE: ignora qualsiasi utenteId passato, usa l'utente corrente
             Long currentUserId = getCurrentUserId();
             results = timesheetRepository.findByUtenteIdAndMeseAndAnno(currentUserId, mese, anno);
+        }
+
+        if (results.isEmpty()) {
+            throw new EntityNotFoundException(String.format(
+                    "Nessun timesheet trovato per %02d/%d%s",
+                    mese,
+                    anno,
+                    utenteId != null ? " (utente ID " + utenteId + ")" : ""
+            ));
         }
 
         return results.stream().map(mapper::toDto).toList();
@@ -248,22 +258,23 @@ public class TimesheetService {
 
     /**
      * Riapre un timesheet.
-     * Un timesheet CHIUSO può essere riaperto solo dagli utenti con ruolo ADMIN.
-     * Un timesheet CONFERMATO può essere riaperto dal proprietario o da ADMIN.
+     * Un timesheet CHIUSO può essere riaperto solo da un ADMIN.
      *
      * @param id ID del timesheet da riaprire
      * @return TimesheetDto riaperto
      * @throws EntityNotFoundException se il timesheet non esiste o l'utente non è autorizzato
-     * @throws AccessDeniedException se un DIPENDENTE tenta di riaprire un timesheet CHIUSO
+     * @throws AccessDeniedException   se un utente non ADMIN tenta di riaprire un timesheet CHIUSO
      */
     public TimesheetDto riapri(Long id) {
         Timesheet ts = mustReadOwnedOrAdmin(id);
+
+        if (ts.getStato() == TimesheetStato.APERTO) {
+            throw new IllegalStateException("Il timesheet è già nello stato APERTO e non può essere riaperto");
+        }
         if (ts.getStato() == TimesheetStato.CHIUSO && !currentUserIsAdmin()) {
             throw new AccessDeniedException("Solo ADMIN può riaprire un timesheet CHIUSO");
         }
-        if (ts.getStato() == TimesheetStato.APERTO) {
-            return mapper.toDto(ts);
-        }
+
         ts.setStato(TimesheetStato.APERTO);
         return mapper.toDto(timesheetRepository.save(ts));
     }
@@ -285,6 +296,37 @@ public class TimesheetService {
         ts.setStato(TimesheetStato.CHIUSO);
         ts.setDataCompilazione(LocalDate.now());
         return mapper.toDto(timesheetRepository.save(ts));
+    }
+
+    /**
+     * Calcola i totali di orario e costo per un timesheet.
+     * Può restituire i totali complessivi o suddivisi per cliente.
+     *
+     * @param timesheetId ID del timesheet
+     * @param perCliente  Se true, restituisce i totali per cliente; altrimenti totali complessivi
+     * @return TotaliDto con orario e costo arrotondati a 2 decimali, o lista di TotaleClienteDto
+     * @throws EntityNotFoundException se il timesheet non esiste o l'utente non è autorizzato
+     */
+    public Object totali(Long timesheetId, boolean perCliente) {
+
+        mustReadOwnedOrAdmin(timesheetId);
+
+        if (!perCliente) {
+            TotaliDto raw = rigaRepository.sumTotaliByTimesheetId(timesheetId);
+            // safe: la query ritorna sempre una riga
+            double orarioRounded = BigDecimal.valueOf(raw.totaleOrario()).setScale(2, RoundingMode.HALF_UP).doubleValue();
+            double costoRounded = BigDecimal.valueOf(raw.totaleCosto()).setScale(2, RoundingMode.HALF_UP).doubleValue();
+            return new TotaliDto(orarioRounded, costoRounded);
+        } else {
+            return rigaRepository.sumTotaliPerCliente(timesheetId).stream()
+                    .map(p -> new TotaleClienteDto(
+                            p.clienteId(),
+                            p.clienteNome(),
+                            BigDecimal.valueOf(p.orario()).setScale(2, RoundingMode.HALF_UP).doubleValue(),
+                            BigDecimal.valueOf(p.costo()).setScale(2, RoundingMode.HALF_UP).doubleValue()
+                    ))
+                    .toList();
+        }
     }
 
     /* ------------------------- HELPERS ------------------------- */

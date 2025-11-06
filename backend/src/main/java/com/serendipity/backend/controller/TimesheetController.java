@@ -146,7 +146,7 @@ public class TimesheetController {
      * @param id ID del timesheet da riaprire
      * @return TimesheetDto con stato aggiornato
      */
-    @PreAuthorize("hasAnyRole('ADMIN','DIPENDENTE')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'DIPENDENTE')")
     @PutMapping("/{id}/riapri")
     public ResponseEntity<ResponseMessage> riapri(@PathVariable Long id) {
         var dto = service.riapri(id);
@@ -164,6 +164,24 @@ public class TimesheetController {
     public ResponseEntity<ResponseMessage> chiudi(@PathVariable Long id) {
         var dto = service.chiudi(id);
         return ResponseEntity.ok(new ResponseMessage(200, "Timesheet chiuso", dto));
+    }
+
+    /**
+     * Recupera i totali di un timesheet, opzionalmente suddivisi per cliente.
+     *
+     * @param id         ID del timesheet
+     * @param perCliente Se true, restituisce i totali suddivisi per cliente
+     * @return Totali del timesheet
+     */
+    @PreAuthorize("hasAnyRole('ADMIN','DIPENDENTE')")
+    @GetMapping("/{id}/totali")
+    public ResponseEntity<ResponseMessage> totali(
+            @PathVariable Long id,
+            @RequestParam(name = "perCliente", defaultValue = "false") boolean perCliente
+    ) {
+        Object payload = service.totali(id, perCliente);
+        String msg = perCliente ? "Totali per cliente" : "Totali timesheet";
+        return ResponseEntity.ok(new ResponseMessage(200, msg, payload));
     }
 
 }
