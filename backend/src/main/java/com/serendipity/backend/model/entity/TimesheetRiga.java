@@ -11,22 +11,27 @@ public class TimesheetRiga {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(nullable = false)
     private LocalDate data;
 
+    @Column(nullable = false)
     private int ore;
 
+    @Column(nullable = false)
     private int minuti;
 
+    @Column(nullable = false)
     private double orario; // ore in decimale
 
+    @Column(nullable = false)
     private double costoOrario; // orario * cliente.tariffaOraria
 
     @ManyToOne
-    @JoinColumn(name = "cliente_id")
+    @JoinColumn(name = "cliente_id", nullable = false)
     private Cliente cliente;
 
     @ManyToOne
-    @JoinColumn(name = "timesheet_id")
+    @JoinColumn(name = "timesheet_id", nullable = false)
     private Timesheet timesheet;
 
     public Long getId() {

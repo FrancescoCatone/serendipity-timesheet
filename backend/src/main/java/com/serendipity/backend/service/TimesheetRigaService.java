@@ -91,7 +91,8 @@ public class TimesheetRigaService {
         return mapper.toDto(rigaRepository.save(entity));
     }
 
-    /** Aggiorna una riga del timesheet esistente.
+    /**
+     * Aggiorna una riga del timesheet esistente.
      *
      * @param id  ID della riga del timesheet da aggiornare
      * @param dto Dati aggiornati della riga del timesheet
@@ -115,7 +116,8 @@ public class TimesheetRigaService {
         return mapper.toDto(rigaRepository.save(existing));
     }
 
-    /** Elimina una riga del timesheet per ID.
+    /**
+     * Elimina una riga del timesheet per ID.
      *
      * @param id ID della riga del timesheet da eliminare
      * @throws EntityNotFoundException se la riga non esiste o l'utente non è autorizzato
@@ -130,7 +132,8 @@ public class TimesheetRigaService {
         rigaRepository.deleteById(id);
     }
 
-    /** Filtra le righe del timesheet in base a cliente, utente e data, con controlli di autorizzazione.
+    /**
+     * Filtra le righe del timesheet in base a cliente, utente e data, con controlli di autorizzazione.
      *
      * @param clienteId ID del cliente da filtrare (opzionale)
      * @param utenteId  ID dell'utente da filtrare (opzionale, solo per ADMIN)
@@ -152,7 +155,8 @@ public class TimesheetRigaService {
                 .toList();
     }
 
-    /** Recupera tutte le righe associate a un dato timesheet, con controlli di autorizzazione.
+    /**
+     * Recupera tutte le righe associate a un dato timesheet, con controlli di autorizzazione.
      *
      * @param timesheetId ID del timesheet di cui recuperare le righe
      * @return Lista di TimesheetRigaDto associati al timesheet specificato
@@ -171,19 +175,48 @@ public class TimesheetRigaService {
 
     /* ------------------------- HELPERS ------------------------- */
 
-    /** Applica i dati del DTO all’entità, collegandola al timesheet. */
+    /**
+     * Applica i dati dal DTO all'entità TimesheetRiga, eseguendo le validazioni e i calcoli necessari.
+     *
+     * @param dto    il DTO contenente i dati da applicare
+     * @param entity l'entità TimesheetRiga da aggiornare
+     * @param ts     il Timesheet associato alla riga
+     */
     private void apply(CreaTimesheetRigaDto dto, TimesheetRiga entity, Timesheet ts) {
+
+        // 1) vincolo mese/anno coerente col TS
+        ensureDataMatchesTimesheet(dto.getData(), ts);
+
+        // 2) carico cliente
+        var cliente = clienteRepository.findById(dto.getClienteId())
+                .orElseThrow(() -> new EntityNotFoundException("Cliente non trovato"));
+
+        // 3) validazioni base
+        if (dto.getOre() < 0) {
+            throw new IllegalArgumentException("Le ore non possono essere negative");
+        }
+        if (dto.getMinuti() < 0 || dto.getMinuti() > 59) {
+            throw new IllegalArgumentException("I minuti devono essere compresi tra 0 e 59");
+        }
+
+        // 4) calcoli
+        double orarioCalcolato = calcOrario(dto.getOre(), dto.getMinuti()); // esempio: 1h20m -> 1.33
+        double costoCalcolato = calcCosto(orarioCalcolato, cliente.getTariffaOraria()); // 1.33 * 7 -> 9.31
+
+        // 5) set campi
         entity.setTimesheet(ts);
-        entity.setCliente(clienteRepository.findById(dto.getClienteId())
-                .orElseThrow(() -> new EntityNotFoundException("Cliente non trovato")));
+        entity.setCliente(cliente);
         entity.setData(dto.getData());
         entity.setOre(dto.getOre());
         entity.setMinuti(dto.getMinuti());
-        entity.setOrario(dto.getOrario().doubleValue());
-        entity.setCostoOrario(dto.getCostoOrario().doubleValue());
+        entity.setOrario(orarioCalcolato);
+        entity.setCostoOrario(costoCalcolato);
+
     }
 
-    /** Vietiamo modifiche se TS è CHIUSO. Se CONFERMATO → solo ADMIN può modificare. */
+    /**
+     * Vietiamo modifiche se TS è CHIUSO. Se CONFERMATO → solo ADMIN può modificare.
+     */
     private void ensureTimesheetIsEditable(Timesheet ts) {
         TimesheetStato stato = ts.getStato();
         if (stato == TimesheetStato.CHIUSO) {
@@ -194,7 +227,9 @@ public class TimesheetRigaService {
         }
     }
 
-    /** Controlla che l’utente corrente sia ADMIN o sia l’owner del timesheet. */
+    /**
+     * Controlla che l’utente corrente sia ADMIN o sia l’owner del timesheet.
+     */
     private void ensureOwnedOrAdmin(Timesheet ts) {
         if (currentUserIsAdmin()) return;
         Long me = getCurrentUserId();
@@ -204,7 +239,9 @@ public class TimesheetRigaService {
         }
     }
 
-    /** Controlla che l’utente corrente sia ADMIN o sia l’owner indicato. */
+    /**
+     * Controlla che l’utente corrente sia ADMIN o sia l’owner indicato.
+     */
     private void ensureSelfOrAdmin(Long targetUserId) {
         if (currentUserIsAdmin()) return;
         Long me = getCurrentUserId();
@@ -213,7 +250,9 @@ public class TimesheetRigaService {
         }
     }
 
-    /** Controlla se l’utente corrente ha il ruolo ADMIN. */
+    /**
+     * Controlla se l’utente corrente ha il ruolo ADMIN.
+     */
     private boolean currentUserIsAdmin() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         return auth != null && auth.getAuthorities().stream()
@@ -221,11 +260,59 @@ public class TimesheetRigaService {
                 .anyMatch("ROLE_ADMIN"::equals);
     }
 
-    /** Recupera l’ID dell’utente corrente dal contesto di sicurezza. */
+    /**
+     * Recupera l’ID dell’utente corrente dal contesto di sicurezza.
+     */
     private Long getCurrentUserId() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         return utenteRepository.findByEmail(email)
                 .orElseThrow(() -> new EntityNotFoundException("Utente corrente non trovato"))
                 .getId();
     }
+
+    /**
+     * Verifica che la data fornita appartenga al mese e anno del timesheet.
+     *
+     * @param data la data da verificare
+     * @param ts   il timesheet di riferimento
+     * @throws IllegalArgumentException se la data non appartiene al mese/anno del timesheet
+     */
+    private void ensureDataMatchesTimesheet(LocalDate data, Timesheet ts) {
+        var ymTs = java.time.YearMonth.of(ts.getAnno(), ts.getMese());
+        if (!java.time.YearMonth.from(data).equals(ymTs)) {
+            throw new IllegalArgumentException(
+                    String.format("La data %s non appartiene al mese/anno del timesheet (%02d/%d)",
+                            data, ts.getMese(), ts.getAnno())
+            );
+        }
+    }
+
+    /**
+     * Calcola l’orario in formato decimale a partire da ore e minuti.
+     *
+     * @param ore    numero di ore
+     * @param minuti numero di minuti
+     * @return orario in formato decimale (es. 1h20m -> 1.33)
+     */
+    private double calcOrario(int ore, int minuti) {
+        var minutiTot = ore * 60 + minuti;
+        return new java.math.BigDecimal(minutiTot)
+                .divide(new java.math.BigDecimal(60), 2, java.math.RoundingMode.HALF_UP)
+                .doubleValue();
+    }
+
+    /**
+     * Calcola il costo totale in base all’orario e alla tariffa oraria del cliente.
+     *
+     * @param orario                orario in formato decimale
+     * @param tariffaOrariaCliente  tariffa oraria del cliente
+     * @return costo totale arrotondato a 2 decimali
+     */
+    private double calcCosto(double orario, double tariffaOrariaCliente) {
+        return new java.math.BigDecimal(orario)
+                .multiply(new java.math.BigDecimal(tariffaOrariaCliente))
+                .setScale(2, java.math.RoundingMode.HALF_UP)
+                .doubleValue();
+    }
+
 }

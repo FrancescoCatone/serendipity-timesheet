@@ -1,11 +1,9 @@
 package com.serendipity.backend.model.dto.create;
 
-import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
 
 public class CreaTimesheetRigaDto {
@@ -25,12 +23,6 @@ public class CreaTimesheetRigaDto {
     @Min(value = 0)
     @Max(value = 59, message = "I minuti devono essere tra 0 e 59")
     private int minuti;
-
-    @DecimalMin(value = "0.0", inclusive = false, message = "L'orario deve essere maggiore di 0")
-    private BigDecimal orario;
-
-    @DecimalMin(value = "0.0", inclusive = false, message = "Il costo orario deve essere maggiore di 0")
-    private BigDecimal costoOrario;
 
     public CreaTimesheetRigaDto() {
     }
@@ -73,22 +65,6 @@ public class CreaTimesheetRigaDto {
 
     public void setMinuti(int minuti) {
         this.minuti = minuti;
-    }
-
-    public BigDecimal getOrario() {
-        return orario;
-    }
-
-    public void setOrario(BigDecimal orario) {
-        this.orario = orario;
-    }
-
-    public BigDecimal getCostoOrario() {
-        return costoOrario;
-    }
-
-    public void setCostoOrario(BigDecimal costoOrario) {
-        this.costoOrario = costoOrario;
     }
 
 }
