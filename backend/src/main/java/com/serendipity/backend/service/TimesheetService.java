@@ -2,8 +2,8 @@ package com.serendipity.backend.service;
 
 import com.serendipity.backend.mapper.TimesheetMapper;
 import com.serendipity.backend.model.dto.TimesheetDto;
-import com.serendipity.backend.model.record.TotaleClienteDto;
-import com.serendipity.backend.model.record.TotaliDto;
+import com.serendipity.backend.model.dto.TotaleClienteDto;
+import com.serendipity.backend.model.dto.TotaliDto;
 import com.serendipity.backend.model.dto.create.CreaTimesheetDto;
 import com.serendipity.backend.model.entity.Timesheet;
 import com.serendipity.backend.model.enums.TimesheetStato;
