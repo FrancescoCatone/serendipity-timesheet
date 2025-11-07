@@ -1,0 +1,635 @@
+package com.serendipity.backend.service;
+
+import com.serendipity.backend.mapper.TimesheetMapper;
+import com.serendipity.backend.model.dto.TimesheetDto;
+import com.serendipity.backend.model.dto.create.CreaTimesheetDto;
+import com.serendipity.backend.model.record.TotaliDto;
+import com.serendipity.backend.model.entity.Timesheet;
+import com.serendipity.backend.model.entity.Utente;
+import com.serendipity.backend.model.enums.TimesheetStato;
+import com.serendipity.backend.repository.TimesheetRepository;
+import com.serendipity.backend.repository.TimesheetRigaRepository;
+import com.serendipity.backend.repository.UtenteRepository;
+import jakarta.persistence.EntityNotFoundException;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
+
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+@ExtendWith(MockitoExtension.class)
+class TimesheetServiceTest {
+
+    @InjectMocks
+    private TimesheetService service;
+
+    @Mock
+    private TimesheetRepository timesheetRepository;
+    @Mock
+    private UtenteRepository utenteRepository;
+    @Mock
+    private TimesheetRigaRepository rigaRepository;
+    @Mock
+    private TimesheetMapper mapper;
+
+    private Utente admin;
+    private Utente user;
+
+    @BeforeEach
+    void setup() {
+        // utenti base
+        admin = new Utente();
+        setUtente(admin, 100L, "admin@acme.it");
+
+        user = new Utente();
+        setUtente(user, 200L, "user@acme.it");
+    }
+
+    @AfterEach
+    void clear() {
+        SecurityContextHolder.clearContext();
+    }
+
+    // Helpers -----------------------------------------------------------------
+
+    private void setUtente(Utente u, Long id, String email) {
+        // poiché Utente è una entity del tuo progetto, assumo abbia setId/setEmail.
+        try {
+            var idField = Utente.class.getDeclaredField("id");
+            idField.setAccessible(true);
+            idField.set(u, id);
+        } catch (Exception ignore) {
+        }
+        try {
+            var emailField = Utente.class.getDeclaredField("email");
+            emailField.setAccessible(true);
+            emailField.set(u, email);
+        } catch (Exception ignore) {
+        }
+        // Se hai i setter pubblici usa direttamente u.setId(id); u.setEmail(email);
+    }
+
+    private void authAsAdmin() {
+        var auth = new UsernamePasswordAuthenticationToken(
+                admin.getEmail(), "x",
+                List.of(new SimpleGrantedAuthority("ROLE_ADMIN")));
+        SecurityContextHolder.getContext().setAuthentication(auth);
+    }
+
+    private void authAsUser() {
+        var auth = new UsernamePasswordAuthenticationToken(
+                user.getEmail(), "x",
+                List.of(new SimpleGrantedAuthority("ROLE_USER")));
+        SecurityContextHolder.getContext().setAuthentication(auth);
+    }
+
+    private Timesheet ts(Long id, int mese, int anno, Utente owner, TimesheetStato stato) {
+        Timesheet t = new Timesheet();
+        t.setId(id);
+        t.setMese(mese);
+        t.setAnno(anno);
+        t.setUtente(owner);
+        t.setStato(stato);
+        return t;
+    }
+
+    private TimesheetDto dtoFrom(Timesheet t) {
+        return new TimesheetDto(t.getId(), t.getMese(), t.getAnno(), t.getDataCompilazione(),
+                t.getUtente() != null ? t.getUtente().getId() : null,
+                t.getStato() != null ? t.getStato().name() : null);
+    }
+
+    private void stubCurrentUserLookupAsUser() {
+        when(utenteRepository.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
+    }
+
+    // findById ----------------------------------------------------------------
+
+    @Test
+    void findById_ok() {
+        authAsAdmin();
+        var t = ts(1L, 10, 2025, admin, TimesheetStato.APERTO);
+        when(timesheetRepository.findById(1L)).thenReturn(Optional.of(t));
+        when(mapper.toDto(t)).thenReturn(dtoFrom(t));
+
+        var out = service.findById(1L);
+
+        assertThat(out.id()).isEqualTo(1L);
+        assertThat(out.mese()).isEqualTo(10);
+    }
+
+    @Test
+    void findById_notFound() {
+        authAsAdmin();
+        when(timesheetRepository.findById(99L)).thenReturn(Optional.empty());
+        assertThatThrownBy(() -> service.findById(99L))
+                .isInstanceOf(EntityNotFoundException.class);
+    }
+
+    // create ------------------------------------------------------------------
+
+    @Test
+    void create_ok_selfUser() {
+        authAsUser();
+
+        stubCurrentUserLookupAsUser();
+
+        CreaTimesheetDto dto = new CreaTimesheetDto();
+        dto.setAnno(2025);
+        dto.setMese(10);
+        dto.setUtenteId(200L); // stesso user
+
+        when(timesheetRepository.existsByUtenteIdAndMeseAndAnno(200L, 10, 2025)).thenReturn(false);
+        when(utenteRepository.findById(200L)).thenReturn(Optional.of(user));
+
+        var saved = ts(10L, 10, 2025, user, TimesheetStato.APERTO);
+        when(timesheetRepository.save(any(Timesheet.class))).thenReturn(saved);
+        when(mapper.toDto(saved)).thenReturn(dtoFrom(saved));
+
+        var out = service.create(dto);
+
+        assertThat(out.id()).isEqualTo(10L);
+        verify(timesheetRepository).save(any(Timesheet.class));
+    }
+
+    @Test
+    void create_ok_asAdmin_forAnotherUser() {
+        authAsAdmin();
+
+        CreaTimesheetDto dto = new CreaTimesheetDto();
+        dto.setAnno(2025);
+        dto.setMese(9);
+        dto.setUtenteId(200L); // admin può creare per altri
+
+        when(timesheetRepository.existsByUtenteIdAndMeseAndAnno(200L, 9, 2025)).thenReturn(false);
+        when(utenteRepository.findById(200L)).thenReturn(Optional.of(user));
+
+        var saved = ts(11L, 9, 2025, user, TimesheetStato.APERTO);
+        when(timesheetRepository.save(any(Timesheet.class))).thenReturn(saved);
+        when(mapper.toDto(saved)).thenReturn(dtoFrom(saved));
+
+        var out = service.create(dto);
+
+        assertThat(out.id()).isEqualTo(11L);
+    }
+
+    @Test
+    void create_conflict_duplicate() {
+        authAsAdmin();
+        CreaTimesheetDto dto = new CreaTimesheetDto();
+        dto.setAnno(2025);
+        dto.setMese(10);
+        dto.setUtenteId(200L);
+
+        when(timesheetRepository.existsByUtenteIdAndMeseAndAnno(200L, 10, 2025)).thenReturn(true);
+
+        assertThatThrownBy(() -> service.create(dto))
+                .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
+    void create_forbidden_otherUser_whenNotAdmin() {
+        authAsUser();
+        stubCurrentUserLookupAsUser();
+
+        CreaTimesheetDto dto = new CreaTimesheetDto();
+        dto.setAnno(2025);
+        dto.setMese(10);
+        dto.setUtenteId(999L); // altro utente
+
+        assertThatThrownBy(() -> service.create(dto))
+                .isInstanceOf(AccessDeniedException.class);
+    }
+
+    @Test
+    void create_userNotFound() {
+        authAsAdmin();
+        CreaTimesheetDto dto = new CreaTimesheetDto();
+        dto.setAnno(2025);
+        dto.setMese(10);
+        dto.setUtenteId(123L);
+
+        when(timesheetRepository.existsByUtenteIdAndMeseAndAnno(123L, 10, 2025)).thenReturn(false);
+        when(utenteRepository.findById(123L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.create(dto))
+                .isInstanceOf(EntityNotFoundException.class);
+    }
+
+    // update ------------------------------------------------------------------
+
+    @Test
+    void update_ok_changeMonthYear_sameOwner() {
+        authAsAdmin();
+        var existing = ts(1L, 9, 2025, user, TimesheetStato.APERTO);
+        when(timesheetRepository.findById(1L)).thenReturn(Optional.of(existing));
+        when(utenteRepository.findById(200L)).thenReturn(Optional.of(user));
+        when(timesheetRepository.existsByUtenteIdAndMeseAndAnno(200L, 10, 2025)).thenReturn(false);
+
+        CreaTimesheetDto dto = new CreaTimesheetDto();
+        dto.setUtenteId(200L);
+        dto.setMese(10);
+        dto.setAnno(2025);
+
+        var saved = ts(1L, 10, 2025, user, TimesheetStato.APERTO);
+        when(timesheetRepository.save(any(Timesheet.class))).thenReturn(saved);
+        when(mapper.toDto(saved)).thenReturn(dtoFrom(saved));
+
+        var out = service.update(1L, dto);
+        assertThat(out.mese()).isEqualTo(10);
+    }
+
+    @Test
+    void update_notFound() {
+        authAsAdmin();
+        when(timesheetRepository.findById(999L)).thenReturn(Optional.empty());
+
+        CreaTimesheetDto dto = new CreaTimesheetDto();
+        dto.setUtenteId(200L);
+        dto.setMese(10);
+        dto.setAnno(2025);
+
+        assertThatThrownBy(() -> service.update(999L, dto))
+                .isInstanceOf(EntityNotFoundException.class);
+    }
+
+    @Test
+    void update_forbidden_whenClosed() {
+        authAsAdmin();
+        var existing = ts(1L, 9, 2025, user, TimesheetStato.CHIUSO);
+        when(timesheetRepository.findById(1L)).thenReturn(Optional.of(existing));
+
+        CreaTimesheetDto dto = new CreaTimesheetDto();
+        dto.setUtenteId(200L);
+        dto.setMese(9);
+        dto.setAnno(2025);
+
+        assertThatThrownBy(() -> service.update(1L, dto))
+                .isInstanceOf(AccessDeniedException.class);
+    }
+
+    @Test
+    void update_illegal_whenConfirmed_andNotAdmin() {
+        authAsUser();
+        stubCurrentUserLookupAsUser();
+
+        var existing = ts(1L, 9, 2025, user, TimesheetStato.CONFERMATO);
+        when(timesheetRepository.findById(1L)).thenReturn(Optional.of(existing));
+
+        CreaTimesheetDto dto = new CreaTimesheetDto();
+        dto.setUtenteId(200L);
+        dto.setMese(9);
+        dto.setAnno(2025);
+
+        assertThatThrownBy(() -> service.update(1L, dto))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("CONFERMATO");
+    }
+
+    @Test
+    void update_conflict_whenChangingToExistingCombination() {
+        authAsAdmin();
+        var existing = ts(1L, 9, 2025, user, TimesheetStato.APERTO);
+        when(timesheetRepository.findById(1L)).thenReturn(Optional.of(existing));
+        when(timesheetRepository.existsByUtenteIdAndMeseAndAnno(200L, 10, 2025)).thenReturn(true);
+
+        CreaTimesheetDto dto = new CreaTimesheetDto();
+        dto.setUtenteId(200L);
+        dto.setMese(10);
+        dto.setAnno(2025);
+
+        assertThatThrownBy(() -> service.update(1L, dto))
+                .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    // delete ------------------------------------------------------------------
+
+    @Test
+    void delete_ok() {
+        authAsAdmin();
+        when(timesheetRepository.existsById(1L)).thenReturn(true);
+        service.delete(1L);
+        verify(timesheetRepository).deleteById(1L);
+    }
+
+    @Test
+    void delete_notFound() {
+        authAsAdmin();
+        when(timesheetRepository.existsById(1L)).thenReturn(false);
+        assertThatThrownBy(() -> service.delete(1L))
+                .isInstanceOf(EntityNotFoundException.class);
+    }
+
+    // search ------------------------------------------------------------------
+
+    @Test
+    void search_argumentsInvalid() {
+        authAsAdmin();
+        assertThatThrownBy(() -> service.search(null, 2025, null))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> service.search(13, 2025, null))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void search_admin_allOrByUser_ok() {
+        authAsAdmin();
+        var t1 = ts(1L, 10, 2025, user, TimesheetStato.APERTO);
+        var t2 = ts(2L, 10, 2025, admin, TimesheetStato.APERTO);
+
+        when(timesheetRepository.findByMeseAndAnno(10, 2025)).thenReturn(List.of(t1, t2));
+        when(mapper.toDto(t1)).thenReturn(dtoFrom(t1));
+        when(mapper.toDto(t2)).thenReturn(dtoFrom(t2));
+
+        var all = service.search(10, 2025, null);
+        assertThat(all).hasSize(2);
+
+        when(timesheetRepository.findByUtenteIdAndMeseAndAnno(200L, 10, 2025)).thenReturn(List.of(t1));
+        var onlyUser = service.search(10, 2025, 200L);
+        assertThat(onlyUser).extracting(TimesheetDto::utenteId).containsExactly(200L);
+    }
+
+    @Test
+    void search_nonAdmin_onlyOwn_ok() {
+        authAsUser();
+        stubCurrentUserLookupAsUser();
+
+        var own = ts(9L, 10, 2025, user, TimesheetStato.APERTO);
+        when(timesheetRepository.findByUtenteIdAndMeseAndAnno(200L, 10, 2025)).thenReturn(List.of(own));
+        when(mapper.toDto(own)).thenReturn(dtoFrom(own));
+
+        var res = service.search(10, 2025, 999L /* ignorato per non-admin */);
+        assertThat(res).hasSize(1);
+        assertThat(res.get(0).utenteId()).isEqualTo(200L);
+    }
+
+    @Test
+    void search_notFound_throws() {
+        authAsAdmin();
+        when(timesheetRepository.findByMeseAndAnno(10, 2025)).thenReturn(Collections.emptyList());
+        assertThatThrownBy(() -> service.search(10, 2025, null))
+                .isInstanceOf(EntityNotFoundException.class);
+    }
+
+    // anni/mesi disponibili ---------------------------------------------------
+
+    @Test
+    void anniDisponibili_ok() {
+        when(timesheetRepository.findDistinctAnni()).thenReturn(List.of(2025, 2024));
+        assertThat(service.anniDisponibili()).containsExactly(2025, 2024);
+    }
+
+    @Test
+    void mesiDisponibiliPerAnno_ok() {
+        when(timesheetRepository.findDistinctMesiByAnno(2025)).thenReturn(List.of(9, 10));
+        assertThat(service.mesiDisponibiliPerAnno(2025)).containsExactly(9, 10);
+    }
+
+    // findAllFiltered ---------------------------------------------------------
+
+    @Test
+    void findAllFiltered_admin_getsAll() {
+        authAsAdmin();
+        var t1 = ts(1L, 10, 2025, admin, TimesheetStato.APERTO);
+        var t2 = ts(2L, 9, 2025, user, TimesheetStato.APERTO);
+
+        when(timesheetRepository.findAll()).thenReturn(List.of(t1, t2));
+        when(mapper.toDto(t1)).thenReturn(dtoFrom(t1));
+        when(mapper.toDto(t2)).thenReturn(dtoFrom(t2));
+
+        var res = service.findAllFiltered();
+        assertThat(res).hasSize(2);
+    }
+
+    @Test
+    void findAllFiltered_nonAdmin_getsOwn() {
+        authAsUser();
+        stubCurrentUserLookupAsUser();
+
+        var own = ts(3L, 10, 2025, user, TimesheetStato.APERTO);
+
+        when(timesheetRepository.findByUtenteId(200L)).thenReturn(List.of(own));
+        when(mapper.toDto(own)).thenReturn(dtoFrom(own));
+
+        var res = service.findAllFiltered();
+        assertThat(res).hasSize(1);
+        assertThat(res.get(0).utenteId()).isEqualTo(200L);
+    }
+
+    // conferma ----------------------------------------------------------------
+
+    @Test
+    void conferma_ok_whenAperto_andCompleto() {
+        authAsUser();
+        stubCurrentUserLookupAsUser();
+
+        var t = ts(1L, 10, 2025, user, TimesheetStato.APERTO);
+
+        when(timesheetRepository.findById(1L)).thenReturn(Optional.of(t));
+        // timesheet completo → ogni giorno presente (semplifico: il service controlla size con set.contains(..))
+        // per evitare di dover costruire tutte le date, restituisco direttamente "completo" via spy sul service?
+        // più semplice: facciamo finta che sia completo restituendo tutte le date.
+        // Ma il service chiama rigaRepository.findDistinctDateByTimesheetId(1L) -> set contains tutti i giorni;
+        // Per non generarle, trucco: mese di 1 giorno? Non possibile. Allora mock per 2-3 giorni + YearMonth di ottobre (31).
+        // Soluzione: stubbare con una collezione che copre tutto non è pratico qui, quindi usiamo doAnswer per sostituire save:
+        // In verità serve solo che isCompleto(...) ritorni true: simuliamolo restituendo una lista che copre tutti i giorni 1..31.
+
+        var allDates = new ArrayList<java.time.LocalDate>();
+        for (int d = 1; d <= 31; d++) allDates.add(LocalDate.of(2025, 10, d));
+        when(rigaRepository.findDistinctDateByTimesheetId(1L)).thenReturn(allDates);
+
+        var saved = ts(1L, 10, 2025, user, TimesheetStato.CONFERMATO);
+        when(timesheetRepository.save(any(Timesheet.class))).thenReturn(saved);
+        when(mapper.toDto(saved)).thenReturn(dtoFrom(saved));
+
+        var out = service.conferma(1L);
+        assertThat(out.stato()).isEqualTo(TimesheetStato.CONFERMATO.name());
+    }
+
+    @Test
+    void conferma_illegal_whenNotAperto() {
+        authAsUser();
+        stubCurrentUserLookupAsUser();
+
+        var t = ts(1L, 10, 2025, user, TimesheetStato.CONFERMATO);
+        when(timesheetRepository.findById(1L)).thenReturn(Optional.of(t));
+
+        assertThatThrownBy(() -> service.conferma(1L))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("APERTO");
+    }
+
+    @Test
+    void conferma_illegal_whenIncomplete() {
+        authAsUser();
+        stubCurrentUserLookupAsUser();
+
+        var t = ts(1L, 10, 2025, user, TimesheetStato.APERTO);
+        when(timesheetRepository.findById(1L)).thenReturn(Optional.of(t));
+        // già configurato default: lista date vuota -> incompleto
+
+        when(rigaRepository.findDistinctDateByTimesheetId(1L)).thenReturn(Collections.emptyList());
+
+        assertThatThrownBy(() -> service.conferma(1L))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("non completo");
+    }
+
+    // riapri ------------------------------------------------------------------
+
+    @Test
+    void riapri_illegal_whenAlreadyAperto() {
+        authAsUser();
+        stubCurrentUserLookupAsUser();
+
+        var t = ts(1L, 10, 2025, user, TimesheetStato.APERTO);
+        when(timesheetRepository.findById(1L)).thenReturn(Optional.of(t));
+
+        assertThatThrownBy(() -> service.riapri(1L))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("già nello stato APERTO");
+    }
+
+    @Test
+    void riapri_forbidden_whenChiuso_andNotAdmin() {
+        authAsUser();
+        stubCurrentUserLookupAsUser();
+
+        var t = ts(1L, 10, 2025, user, TimesheetStato.CHIUSO);
+        when(timesheetRepository.findById(1L)).thenReturn(Optional.of(t));
+
+        assertThatThrownBy(() -> service.riapri(1L))
+                .isInstanceOf(AccessDeniedException.class)
+                .hasMessageContaining("Solo ADMIN");
+    }
+
+    @Test
+    void riapri_ok_whenChiuso_andAdmin() {
+        authAsAdmin();
+        var t = ts(1L, 10, 2025, user, TimesheetStato.CHIUSO);
+        when(timesheetRepository.findById(1L)).thenReturn(Optional.of(t));
+
+        var saved = ts(1L, 10, 2025, user, TimesheetStato.APERTO);
+        when(timesheetRepository.save(any(Timesheet.class))).thenReturn(saved);
+        when(mapper.toDto(saved)).thenReturn(dtoFrom(saved));
+
+        var out = service.riapri(1L);
+        assertThat(out.stato()).isEqualTo(TimesheetStato.APERTO.name());
+    }
+
+    @Test
+    void riapri_ok_whenConfermato_andUserOwner() {
+        authAsUser();
+        stubCurrentUserLookupAsUser();
+
+        var t = ts(1L, 10, 2025, user, TimesheetStato.CONFERMATO);
+        when(timesheetRepository.findById(1L)).thenReturn(Optional.of(t));
+
+        var saved = ts(1L, 10, 2025, user, TimesheetStato.APERTO);
+        when(timesheetRepository.save(any(Timesheet.class))).thenReturn(saved);
+        when(mapper.toDto(saved)).thenReturn(dtoFrom(saved));
+
+        var out = service.riapri(1L);
+        assertThat(out.stato()).isEqualTo(TimesheetStato.APERTO.name());
+    }
+
+    // chiudi ------------------------------------------------------------------
+
+    @Test
+    void chiudi_illegal_whenNotConfermato() {
+        authAsUser();
+        stubCurrentUserLookupAsUser();
+
+        var t = ts(1L, 10, 2025, user, TimesheetStato.APERTO);
+        when(timesheetRepository.findById(1L)).thenReturn(Optional.of(t));
+
+        assertThatThrownBy(() -> service.chiudi(1L))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("CONFERMATO");
+    }
+
+    @Test
+    void chiudi_ok_setsDate_andState() {
+        authAsUser();
+        stubCurrentUserLookupAsUser();
+
+        var t = ts(1L, 10, 2025, user, TimesheetStato.CONFERMATO);
+        when(timesheetRepository.findById(1L)).thenReturn(Optional.of(t));
+
+        var saved = ts(1L, 10, 2025, user, TimesheetStato.CHIUSO);
+        saved.setDataCompilazione(LocalDate.now());
+        when(timesheetRepository.save(any(Timesheet.class))).thenReturn(saved);
+        when(mapper.toDto(saved)).thenReturn(dtoFrom(saved));
+
+        var out = service.chiudi(1L);
+        assertThat(out.stato()).isEqualTo(TimesheetStato.CHIUSO.name());
+        assertThat(out.dataCompilazione()).isNotNull();
+    }
+
+    // totali ------------------------------------------------------------------
+
+    @Test
+    void totali_overall_ok_rounded() {
+        authAsUser();
+        stubCurrentUserLookupAsUser();
+
+        var t = ts(1L, 10, 2025, user, TimesheetStato.APERTO);
+        when(timesheetRepository.findById(1L)).thenReturn(Optional.of(t));
+
+        when(rigaRepository.sumTotaliByTimesheetId(1L))
+                .thenReturn(new TotaliDto(7.234, 123.456));
+
+        Object res = service.totali(1L, false);
+        TotaliDto tot = (TotaliDto) res;
+        assertThat(tot.totaleOrario()).isEqualTo(7.23);
+        assertThat(tot.totaleCosto()).isEqualTo(123.46);
+    }
+
+    @Test
+    void totali_perCliente_ok_emptyList() {
+        authAsUser();
+        stubCurrentUserLookupAsUser();
+
+        var t = ts(1L, 10, 2025, user, TimesheetStato.APERTO);
+        when(timesheetRepository.findById(1L)).thenReturn(Optional.of(t));
+
+        when(rigaRepository.sumTotaliPerCliente(1L)).thenReturn(Collections.emptyList());
+
+        Object res = service.totali(1L, true);
+        assertThat(res).isInstanceOf(List.class);
+        assertThat((List<?>) res).isEmpty();
+    }
+
+    // autorizzazioni mustReadOwnedOrAdmin ------------------------------------
+
+    @Test
+    void mustReadOwnedOrAdmin_hidesOthersTimesheetForUser() {
+        authAsUser();
+        stubCurrentUserLookupAsUser();
+
+        var others = ts(1L, 10, 2025, admin, TimesheetStato.APERTO); // owner = admin (id=100), non è mio (id=200)
+        when(timesheetRepository.findById(1L)).thenReturn(Optional.of(others));
+
+        assertThatThrownBy(() -> service.conferma(1L))
+                .isInstanceOf(EntityNotFoundException.class); // anti-leak
+    }
+}

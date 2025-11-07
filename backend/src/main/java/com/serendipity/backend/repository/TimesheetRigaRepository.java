@@ -1,7 +1,7 @@
 package com.serendipity.backend.repository;
 
-import com.serendipity.backend.model.dto.TotaleClienteDto;
-import com.serendipity.backend.model.dto.TotaliDto;
+import com.serendipity.backend.model.record.TotaleClienteDto;
+import com.serendipity.backend.model.record.TotaliDto;
 import com.serendipity.backend.model.entity.TimesheetRiga;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -21,7 +21,7 @@ public interface TimesheetRigaRepository extends JpaRepository<TimesheetRiga, Lo
     List<LocalDate> findDistinctDateByTimesheetId(@Param("timesheetId") Long timesheetId);
 
     @Query("""
-            select new com.serendipity.backend.model.dto.TotaliDto(
+            select new com.serendipity.backend.model.record.TotaliDto(
                 coalesce(sum(r.orario), 0),
                 coalesce(sum(r.costoOrario), 0)
             )
@@ -31,7 +31,7 @@ public interface TimesheetRigaRepository extends JpaRepository<TimesheetRiga, Lo
     TotaliDto sumTotaliByTimesheetId(@Param("tsId") Long timesheetId);
 
     @Query("""
-            select new com.serendipity.backend.model.dto.TotaleClienteDto(
+            select new com.serendipity.backend.model.record.TotaleClienteDto(
                 r.cliente.id,
                 r.cliente.nome,
                 coalesce(sum(r.orario), 0),
