@@ -188,6 +188,69 @@ public class TimesheetControllerIntegrationTest {
                 .andExpect(jsonPath("$.message").value("Timesheet CHIUSO: impossibile modificare"));
     }
 
+    @Test
+    @WithMockUser(username = "admin@serendipity.com", roles = {"ADMIN"})
+    void update_ok_asAdmin() throws Exception {
+        // Timesheet in stato APERTO → modificabile
+        Timesheet ts = new Timesheet();
+        ts.setAnno(2025);
+        ts.setMese(9);
+        ts.setUtente(dipendente);
+        ts.setStato(TimesheetStato.APERTO);
+        ts = timesheetRepository.save(ts);
+
+        CreaTimesheetDto dto = buildTsDto(10, 2025, dipendente.getId());
+
+        mockMvc.perform(put("/api/timesheets/{id}", ts.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(dto)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("Timesheet aggiornato"))
+                .andExpect(jsonPath("$.data.id").value(ts.getId().intValue()))
+                .andExpect(jsonPath("$.data.mese").value(10))
+                .andExpect(jsonPath("$.data.anno").value(2025));
+    }
+
+    @Test
+    @WithMockUser(username = "user@serendipity.com", roles = {"DIPENDENTE"})
+    void conferma_ok_asDipendente() throws Exception {
+        // Timesheet APERTO del dipendente per 10/2025
+        Timesheet ts = new Timesheet();
+        ts.setAnno(2025);
+        ts.setMese(10);
+        ts.setUtente(dipendente);
+        ts.setStato(TimesheetStato.APERTO);
+        ts = timesheetRepository.save(ts);
+
+        // Un cliente qualsiasi per valorizzare le righe
+        Cliente c = new Cliente();
+        c.setNome("Cliente Test");
+        c.setTariffaOraria(10.0);
+        c = clienteRepository.save(c);
+
+        // Popola TUTTI i giorni del mese con una riga valida
+        java.time.YearMonth ym = java.time.YearMonth.of(2025, 10);
+        for (int d = 1; d <= ym.lengthOfMonth(); d++) {
+            TimesheetRiga r = new TimesheetRiga();
+            r.setTimesheet(ts);
+            r.setCliente(c);
+            r.setData(java.time.LocalDate.of(2025, 10, d));
+            r.setOre(1);
+            r.setMinuti(0);
+            r.setOrario(1.0);           // calcolato dal service, ma qui basta coerenza
+            r.setCostoOrario(10.0);     // idem
+            rigaRepository.save(r);
+        }
+
+        // Ora il TS è completo → conferma deve andare a buon fine
+        mockMvc.perform(put("/api/timesheets/{id}/conferma", ts.getId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("Timesheet confermato"))
+                .andExpect(jsonPath("$.data.id").value(ts.getId().intValue()))
+                .andExpect(jsonPath("$.data.stato").value("CONFERMATO"));
+    }
+
+
     /* ======================= DELETE /api/timesheets/{id} ======================= */
 
     @Test

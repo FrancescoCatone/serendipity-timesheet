@@ -138,4 +138,40 @@ public class UtenteControllerIntegrationTest {
                 .andExpect(jsonPath("$.message").value("Utente aggiornato con successo"));
     }
 
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void testGetByCodiceFiscale_success() throws Exception {
+        // 1️⃣ Crea un utente
+        CreaUtenteDto dto = buildValidAdminDto();
+        MvcResult result = mockMvc.perform(post("/api/utenti")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(dto)))
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        // 2️⃣ Recupera il codice fiscale dal body
+        Map<String, Object> responseMap = objectMapper.readValue(
+                result.getResponse().getContentAsString(), new TypeReference<>() {
+                }
+        );
+        Map<String, Object> utenteCreato = (Map<String, Object>) responseMap.get("data");
+        String codiceFiscale = (String) utenteCreato.get("codiceFiscale");
+
+        // 3️⃣ Invoca l’endpoint di ricerca per codice fiscale
+        mockMvc.perform(get("/api/utenti/codiceFiscale/{codiceFiscale}", codiceFiscale))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("Utente trovato"))
+                .andExpect(jsonPath("$.data.codiceFiscale").value(codiceFiscale));
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void testGetByCodiceFiscale_notFound() throws Exception {
+        // Nessun utente creato → deve restituire 404
+        mockMvc.perform(get("/api/utenti/codiceFiscale/{codiceFiscale}", "ABCD123456789XYZ"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.message").value("Utente non trovato con codice fiscale: ABCD123456789XYZ"));
+    }
+
+
 }

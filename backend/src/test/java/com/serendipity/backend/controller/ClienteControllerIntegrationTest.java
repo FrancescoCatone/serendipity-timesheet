@@ -3,7 +3,15 @@ package com.serendipity.backend.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.serendipity.backend.model.dto.create.CreaClienteDto;
 import com.serendipity.backend.model.entity.Cliente;
+import com.serendipity.backend.model.entity.Timesheet;
+import com.serendipity.backend.model.entity.TimesheetRiga;
+import com.serendipity.backend.model.entity.Utente;
+import com.serendipity.backend.model.enums.Ruolo;
+import com.serendipity.backend.model.enums.TimesheetStato;
 import com.serendipity.backend.repository.ClienteRepository;
+import com.serendipity.backend.repository.TimesheetRepository;
+import com.serendipity.backend.repository.TimesheetRigaRepository;
+import com.serendipity.backend.repository.UtenteRepository;
 import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -12,8 +20,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
+
+import java.time.LocalDate;
 
 import static org.hamcrest.Matchers.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -29,6 +40,16 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Transactional
 class ClienteControllerIntegrationTest {
 
+
+    @Autowired
+    private UtenteRepository utenteRepository;
+    @Autowired
+    private TimesheetRepository timesheetRepository;
+    @Autowired
+    private TimesheetRigaRepository rigaRepository;
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
     @Autowired
     private MockMvc mockMvc;
 
@@ -41,6 +62,47 @@ class ClienteControllerIntegrationTest {
     // -----------------------
     // Helpers
     // -----------------------
+
+    private Utente persistUtente(String email, String nome, String cognome) {
+        Utente u = new Utente();
+        u.setCodiceFiscale(java.util.UUID.randomUUID().toString().substring(0, 16));
+        u.setNome(nome);
+        u.setCognome(cognome);
+        u.setEmail(email);
+        u.setPassword(passwordEncoder.encode("Pwd!123456"));
+        u.setRuolo(Ruolo.DIPENDENTE);
+        return utenteRepository.save(u);
+    }
+
+    private Timesheet persistTimesheet(Utente owner, int mese, int anno, TimesheetStato stato) {
+        Timesheet t = new Timesheet();
+        t.setUtente(owner);
+        t.setMese(mese);
+        t.setAnno(anno);
+        t.setStato(stato);
+        return timesheetRepository.save(t);
+    }
+
+    private TimesheetRiga persistRiga(Timesheet ts, Cliente cliente, LocalDate data, int ore, int minuti, double tariffa) {
+        TimesheetRiga r = new TimesheetRiga();
+        r.setTimesheet(ts);
+        r.setCliente(cliente);
+        r.setData(data);
+        r.setOre(ore);
+        r.setMinuti(minuti);
+        // calcoli coerenti con il service
+        double orario = new java.math.BigDecimal(ore * 60 + minuti)
+                .divide(new java.math.BigDecimal(60), 2, java.math.RoundingMode.HALF_UP)
+                .doubleValue();
+        double costo = new java.math.BigDecimal(orario)
+                .multiply(new java.math.BigDecimal(tariffa))
+                .setScale(2, java.math.RoundingMode.HALF_UP)
+                .doubleValue();
+        r.setOrario(orario);
+        r.setCostoOrario(costo);
+        return rigaRepository.save(r);
+    }
+
 
     private CreaClienteDto buildCreateDto(String nome, Double tariffa) {
         CreaClienteDto dto = new CreaClienteDto();
@@ -67,6 +129,42 @@ class ClienteControllerIntegrationTest {
         mockMvc.perform(get("/api/clienti"))
                 .andExpect(status().isForbidden());
     }
+
+    // -----------------------
+    // GET all
+    // -----------------------
+
+    @Test
+    @DisplayName("GET /api/clienti - OK con lista popolata")
+    @WithMockUser(username = "admin", roles = {"ADMIN"})
+    void getAll_ok_list() throws Exception {
+        // isolo il test: svuoto e ricreo due clienti noti
+        clienteRepository.deleteAll();
+        persistCliente("Acme S.p.A.", 45.0);
+        persistCliente("Globex SRL", 55.0);
+
+        mockMvc.perform(get("/api/clienti"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value(200))
+                .andExpect(jsonPath("$.message").value("Lista clienti"))
+                .andExpect(jsonPath("$.data", hasSize(2)))
+                .andExpect(jsonPath("$.data[*].nome",
+                        containsInAnyOrder("Acme S.p.A.", "Globex SRL")));
+    }
+
+    @Test
+    @DisplayName("GET /api/clienti - OK con lista vuota")
+    @WithMockUser(username = "admin", roles = {"ADMIN"})
+    void getAll_ok_empty() throws Exception {
+        clienteRepository.deleteAll();
+
+        mockMvc.perform(get("/api/clienti"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value(200))
+                .andExpect(jsonPath("$.message").value("Lista clienti"))
+                .andExpect(jsonPath("$.data", hasSize(0)));
+    }
+
 
 
     // -----------------------
@@ -277,6 +375,58 @@ class ClienteControllerIntegrationTest {
                 .andExpect(jsonPath("$.data", isA(Number.class)))
                 .andExpect(jsonPath("$.data").value(0.0));
     }
+
+    @Test
+    @DisplayName("GET /api/clienti/{id}/dipendenti - ritorna 1 riga con ore sommate")
+    @WithMockUser(username = "admin", roles = {"ADMIN"})
+    void getDipendentiPerClienteEMese_ok_withData() throws Exception {
+        // dati
+        Cliente cli = persistCliente("Acme S.p.A.", 20.0);
+        Utente dip = persistUtente("mario.rossi@acme.it", "Mario", "Rossi");
+        int mese = 10, anno = 2025;
+
+        Timesheet ts = persistTimesheet(dip, mese, anno, TimesheetStato.APERTO);
+        // 1h30m + 2h00m = 3.5h
+        persistRiga(ts, cli, LocalDate.of(anno, mese, 3), 1, 30, cli.getTariffaOraria());
+        persistRiga(ts, cli, LocalDate.of(anno, mese, 4), 2, 0, cli.getTariffaOraria());
+
+        mockMvc.perform(get("/api/clienti/{clienteId}/dipendenti", cli.getId())
+                        .param("mese", String.valueOf(mese))
+                        .param("anno", String.valueOf(anno)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value(200))
+                .andExpect(jsonPath("$.message", containsStringIgnoringCase("Dipendenti")))
+                .andExpect(jsonPath("$.data.length()").value(1))
+                .andExpect(jsonPath("$.data[0].utenteId").value(dip.getId().intValue()))
+                .andExpect(jsonPath("$.data[0].nome").value("Mario"))
+                .andExpect(jsonPath("$.data[0].cognome").value("Rossi"))
+                // la query somma ore come somma di r.orario (decimale): 1.5 + 2.0 = 3.5
+                .andExpect(jsonPath("$.data[0].oreTotali").value(3.5));
+    }
+
+    @Test
+    @DisplayName("GET /api/clienti/{id}/totale-ore - ritorna somma ore del mese/anno")
+    @WithMockUser(username = "admin", roles = {"ADMIN"})
+    void getTotaleOrePerCliente_ok_withData() throws Exception {
+        // dati
+        Cliente cli = persistCliente("Globex SRL", 30.0);
+        Utente dip = persistUtente("anna.bianchi@globex.com", "Anna", "Bianchi");
+        int mese = 11, anno = 2025;
+
+        Timesheet ts = persistTimesheet(dip, mese, anno, TimesheetStato.APERTO);
+        // 0h45m + 1h15m = 2.0h
+        persistRiga(ts, cli, LocalDate.of(anno, mese, 2), 0, 45, cli.getTariffaOraria());
+        persistRiga(ts, cli, LocalDate.of(anno, mese, 3), 1, 15, cli.getTariffaOraria());
+
+        mockMvc.perform(get("/api/clienti/{clienteId}/totale-ore", cli.getId())
+                        .param("mese", String.valueOf(mese))
+                        .param("anno", String.valueOf(anno)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value(200))
+                .andExpect(jsonPath("$.message", containsStringIgnoringCase("Totale ore")))
+                .andExpect(jsonPath("$.data").value(2.0));
+    }
+
 
     // -----------------------
     // Non-ADMIN: esempi puntuali di 403 sugli endpoint
