@@ -1,3 +1,8 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* opzionale: alcune classi utili base */
+.container {
+  @apply max-w-7xl mx-auto px-4;
+}
