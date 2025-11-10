@@ -3,6 +3,7 @@ package com.serendipity.backend.controller;
 import com.serendipity.backend.model.dto.ResponseMessage;
 import com.serendipity.backend.model.dto.UtenteDto;
 import com.serendipity.backend.model.dto.create.CreaUtenteDto;
+import com.serendipity.backend.model.dto.update.AggiornaPasswordDto;
 import com.serendipity.backend.service.UtenteService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,10 +23,10 @@ public class UtenteController {
     private UtenteService utenteService;
 
     /**
-     * Recupera un utente per ID.
+     * Ottiene un utente per ID.
      *
-     * @param id l'ID dell'utente da cercare
-     * @return un messaggio di risposta con lo stato e il DTO dell'utente trovato
+     * @param id ID dell'utente da cercare
+     * @return ResponseEntity con il messaggio di risposta
      */
     @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/id/{id}")
@@ -34,30 +35,25 @@ public class UtenteController {
         return ResponseEntity.status(response.getStatus()).body(response);
     }
 
-
     /**
-     * Recupera tutti gli utenti.
+     * Ottiene tutti gli utenti.
      *
-     * @return un messaggio di risposta con lo stato e la lista di DTO degli utenti
+     * @return ResponseEntity con il messaggio di risposta
      */
     @PreAuthorize("hasRole('ADMIN')")
     @GetMapping
     public ResponseEntity<ResponseMessage> getAll() {
         List<UtenteDto> utenti = utenteService.getAll();
-
         Map<String, Object> meta = new HashMap<>();
         meta.put("count", utenti.size());
-
-        return ResponseEntity.ok(
-                new ResponseMessage(200, "Lista utenti", utenti, meta)
-        );
+        return ResponseEntity.ok(new ResponseMessage(200, "Lista utenti", utenti, meta));
     }
 
     /**
      * Crea un nuovo utente.
      *
-     * @param dto i dati dell'utente da creare
-     * @return un messaggio di risposta con lo stato e i dati dell'utente creato
+     * @param dto Dati dell'utente da creare
+     * @return ResponseEntity con il messaggio di risposta
      */
     @PreAuthorize("hasRole('ADMIN')")
     @PostMapping
@@ -67,10 +63,10 @@ public class UtenteController {
     }
 
     /**
-     * Recupera un utente per codice fiscale.
+     * Ottiene un utente per codice fiscale.
      *
-     * @param codiceFiscale il codice fiscale dell'utente da cercare
-     * @return un messaggio di risposta con lo stato e il DTO dell'utente trovato
+     * @param codiceFiscale Codice fiscale dell'utente da cercare
+     * @return ResponseEntity con il messaggio di risposta
      */
     @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/codiceFiscale/{codiceFiscale}")
@@ -82,9 +78,9 @@ public class UtenteController {
     /**
      * Aggiorna un utente esistente.
      *
-     * @param id  l'ID dell'utente da aggiornare
-     * @param dto i nuovi dati dell'utente
-     * @return un messaggio di risposta con lo stato e i dati dell'utente aggiornato
+     * @param id  ID dell'utente da aggiornare
+     * @param dto Dati aggiornati dell'utente
+     * @return ResponseEntity con il messaggio di risposta
      */
     @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/{id}")
@@ -94,10 +90,10 @@ public class UtenteController {
     }
 
     /**
-     * Elimina un utente per ID.
+     * Elimina un utente.
      *
-     * @param id l'ID dell'utente da eliminare
-     * @return un messaggio di risposta con lo stato dell'operazione
+     * @param id ID dell'utente da eliminare
+     * @return ResponseEntity con il messaggio di risposta
      */
     @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{id}")
@@ -106,4 +102,32 @@ public class UtenteController {
         return ResponseEntity.status(response.getStatus()).body(response);
     }
 
+    /**
+     * Aggiorna parzialmente un utente esistente.
+     *
+     * @param id      ID dell'utente da aggiornare
+     * @param updates Mappa delle proprietà da aggiornare
+     * @return ResponseEntity con il messaggio di risposta
+     */
+    @PreAuthorize("hasRole('ADMIN')")
+    @PatchMapping("/{id}")
+    public ResponseEntity<ResponseMessage> aggiornaParzialeUtente(
+            @PathVariable Long id,
+            @RequestBody Map<String, Object> updates) {
+        ResponseMessage response = utenteService.aggiornaParziale(id, updates);
+        return ResponseEntity.status(response.getStatus()).body(response);
+    }
+
+    /**
+     * Cambia la password dell'utente corrente.
+     *
+     * @param dto Dati per l'aggiornamento della password
+     * @return ResponseEntity con il messaggio di risposta
+     */
+    @PreAuthorize("isAuthenticated()")
+    @PatchMapping("/me/password")
+    public ResponseEntity<ResponseMessage> cambiaPassword(@Valid @RequestBody AggiornaPasswordDto dto) {
+        ResponseMessage response = utenteService.cambiaPasswordUtenteCorrente(dto);
+        return ResponseEntity.status(response.getStatus()).body(response);
+    }
 }
