@@ -16,6 +16,8 @@ import org.springframework.test.web.servlet.MvcResult;
 
 import java.util.Map;
 
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -171,6 +173,144 @@ public class UtenteControllerIntegrationTest {
         mockMvc.perform(get("/api/utenti/codiceFiscale/{codiceFiscale}", "ABCD123456789XYZ"))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.message").value("Utente non trovato con codice fiscale: ABCD123456789XYZ"));
+    }
+
+    @Test
+    void testAggiornaParzialeUtente_success() throws Exception {
+        // crea un utente come ADMIN
+        CreaUtenteDto dto = buildValidAdminDto();
+        dto.setEmail("user.one@serendipity.com");
+        dto.setCodiceFiscale("USRONE85T10A562Z");
+        dto.setRuolo(Ruolo.DIPENDENTE);
+
+        MvcResult createRes = mockMvc.perform(post("/api/utenti")
+                        .with(user("admin").roles("ADMIN"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(dto)))
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        Map<String, Object> body = objectMapper.readValue(createRes.getResponse().getContentAsString(), new TypeReference<>() {
+        });
+        Integer id = (Integer) ((Map<String, Object>) body.get("data")).get("id");
+
+        // patch: aggiorna nome + email (lowercase enforced)
+        Map<String, Object> updates = Map.of("nome", "Mario", "email", "NEW@MAIL.IT");
+
+        mockMvc.perform(patch("/api/utenti/{id}", id)
+                        .with(user("admin").roles("ADMIN"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(updates)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("Utente aggiornato"));
+    }
+
+    @Test
+    void testAggiornaParzialeUtente_notFound() throws Exception {
+        Map<String, Object> updates = Map.of("nome", "X");
+        mockMvc.perform(patch("/api/utenti/{id}", 999_999)
+                        .with(user("admin").roles("ADMIN"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(updates)))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void testAggiornaParzialeUtente_emailConflict() throws Exception {
+        // crea utente A
+        CreaUtenteDto a = buildValidAdminDto();
+        a.setEmail("user.a@serendipity.com");
+        a.setCodiceFiscale("USERA185T10A562X");
+        a.setRuolo(Ruolo.DIPENDENTE);
+        MvcResult resA = mockMvc.perform(post("/api/utenti")
+                        .with(user("admin").roles("ADMIN"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(a)))
+                .andExpect(status().isCreated())
+                .andReturn();
+        Integer idA = (Integer) ((Map<String, Object>) objectMapper.readValue(resA.getResponse().getContentAsString(), new TypeReference<Map<String, Object>>() {
+                })
+                .get("data")).get("id");
+
+        // crea utente B (email che causerà conflitto)
+        CreaUtenteDto b = buildValidAdminDto();
+        b.setEmail("user.b@serendipity.com");
+        b.setCodiceFiscale("USERB185T10A562W");
+        b.setRuolo(Ruolo.DIPENDENTE);
+        mockMvc.perform(post("/api/utenti")
+                        .with(user("admin").roles("ADMIN"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(b)))
+                .andExpect(status().isCreated());
+
+        // prova a patchare A assegnandogli l'email di B -> 409
+        Map<String, Object> updates = Map.of("email", "user.b@serendipity.com");
+        mockMvc.perform(patch("/api/utenti/{id}", idA)
+                        .with(user("admin").roles("ADMIN"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(updates)))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
+    void testCambiaPassword_success() throws Exception {
+        // crea l'utente su cui lavorare (come ADMIN)
+        CreaUtenteDto dto = buildValidAdminDto(); // email: admin.test@serendipity.com, pwd: AdminTest123!
+        mockMvc.perform(post("/api/utenti")
+                        .with(user("admin").roles("ADMIN"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(dto)))
+                .andExpect(status().isCreated());
+
+        // cambia password autenticandosi come quell'utente (qualsiasi ruolo, basta isAuthenticated)
+        Map<String, String> payload = Map.of(
+                "oldPassword", "AdminTest123!",
+                "newPassword", "NewPwd123!"
+        );
+
+        mockMvc.perform(patch("/api/utenti/me/password")
+                        .with(user("admin.test@serendipity.com").roles("DIPENDENTE"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(payload)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("Password aggiornata"));
+    }
+
+    @Test
+    void testCambiaPassword_badOldPassword_unauthorized() throws Exception {
+        // crea l'utente
+        CreaUtenteDto dto = buildValidAdminDto();
+        mockMvc.perform(post("/api/utenti")
+                        .with(user("admin").roles("ADMIN"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(dto)))
+                .andExpect(status().isCreated());
+
+        // oldPassword errata -> 401
+        Map<String, String> payload = Map.of(
+                "oldPassword", "WrongOld!",
+                "newPassword", "NewPwd123!"
+        );
+
+        mockMvc.perform(patch("/api/utenti/me/password")
+                        .with(user("admin.test@serendipity.com").roles("DIPENDENTE"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(payload)))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void testCambiaPassword_unauthenticated_401() throws Exception {
+        Map<String, String> payload = Map.of(
+                "oldPassword", "whatever",
+                "newPassword", "whatever2"
+        );
+
+        mockMvc.perform(patch("/api/utenti/me/password")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(payload)))
+                .andExpect(status().isForbidden());
     }
 
 

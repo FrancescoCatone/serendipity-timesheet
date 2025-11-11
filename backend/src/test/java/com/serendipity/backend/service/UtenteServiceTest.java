@@ -3,6 +3,7 @@ package com.serendipity.backend.service;
 import com.serendipity.backend.mapper.UtenteMapper;
 import com.serendipity.backend.model.dto.UtenteDto;
 import com.serendipity.backend.model.dto.create.CreaUtenteDto;
+import com.serendipity.backend.model.dto.update.AggiornaPasswordDto;
 import com.serendipity.backend.model.entity.Utente;
 import com.serendipity.backend.model.enums.Ruolo;
 import com.serendipity.backend.repository.UtenteRepository;
@@ -17,12 +18,15 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
@@ -62,7 +66,7 @@ class UtenteServiceTest {
         d.setNome("Mario");
         d.setCognome("Rossi");
         d.setEmail(email);
-        d.setPassword(TEST_PWD); // <<<<<< sostituito
+        d.setPassword(TEST_PWD);
         d.setCodiceFiscale(cf);
         d.setRuolo(ruolo);
         return d;
@@ -261,5 +265,192 @@ class UtenteServiceTest {
         var resp = service.eliminaUtente(9L);
         assertThat(resp.getStatus()).isEqualTo(200);
         verify(utenteRepository).deleteById(9L);
+    }
+
+    /* ---------------------------- aggiornaParziale --------------------- */
+
+    @Test
+    void aggiornaParziale_notFound_throws404() {
+        when(utenteRepository.findById(1L)).thenReturn(Optional.empty());
+        assertThatThrownBy(() -> service.aggiornaParziale(1L, Map.of("nome", "X")))
+                .isInstanceOf(EntityNotFoundException.class);
+    }
+
+    @Test
+    void aggiornaParziale_nome_blank_illegalArgument() {
+        Utente u = ent(1L, "a@a.it", "RSSMRA85T10A562S", Ruolo.DIPENDENTE);
+        when(utenteRepository.findById(1L)).thenReturn(Optional.of(u));
+        assertThatThrownBy(() -> service.aggiornaParziale(1L, Map.of("nome", " ")))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Nome");
+        verify(utenteRepository, never()).save(any());
+    }
+
+    @Test
+    void aggiornaParziale_email_duplicate_conflict409() {
+        Utente u = ent(1L, "old@acme.it", "RSSMRA85T10A562S", Ruolo.DIPENDENTE);
+        when(utenteRepository.findById(1L)).thenReturn(Optional.of(u));
+        when(utenteRepository.existsByEmail("new@acme.it")).thenReturn(true);
+
+        assertThatThrownBy(() -> service.aggiornaParziale(1L, Map.of("email", "NEW@ACME.IT")))
+                .isInstanceOf(DataIntegrityViolationException.class)
+                .hasMessageContaining("Email");
+        verify(utenteRepository, never()).save(any());
+    }
+
+    @Test
+    void aggiornaParziale_email_lowercase_and_saved() {
+        Utente u = ent(1L, "old@acme.it", "RSSMRA85T10A562S", Ruolo.DIPENDENTE);
+        when(utenteRepository.findById(1L)).thenReturn(Optional.of(u));
+        when(utenteRepository.existsByEmail("new@acme.it")).thenReturn(false);
+
+        var updates = new HashMap<String, Object>();
+        updates.put("email", "NeW@AcMe.It");
+        var resp = service.aggiornaParziale(1L, updates);
+
+        assertThat(resp.getStatus()).isEqualTo(200);
+        assertThat(u.getEmail()).isEqualTo("new@acme.it");
+        verify(utenteRepository).save(u);
+    }
+
+    @Test
+    void aggiornaParziale_cf_duplicate_conflict409() {
+        Utente u = ent(1L, "a@a.it", "OLDOLD85T10A562S", Ruolo.DIPENDENTE);
+        when(utenteRepository.findById(1L)).thenReturn(Optional.of(u));
+        when(utenteRepository.existsByCodiceFiscale("NEWNEW85T10A562S")).thenReturn(true);
+
+        assertThatThrownBy(() -> service.aggiornaParziale(1L, Map.of("codiceFiscale", "NEWNEW85T10A562S")))
+                .isInstanceOf(DataIntegrityViolationException.class)
+                .hasMessageContaining("Codice fiscale");
+        verify(utenteRepository, never()).save(any());
+    }
+
+    @Test
+    void aggiornaParziale_ruolo_nonValido_illegalArgument() {
+        Utente u = ent(1L, "a@a.it", "RSSMRA85T10A562S", Ruolo.DIPENDENTE);
+        when(utenteRepository.findById(1L)).thenReturn(Optional.of(u));
+
+        assertThatThrownBy(() -> service.aggiornaParziale(1L, Map.of("ruolo", "NOT_A_ROLE")))
+                .isInstanceOf(IllegalArgumentException.class);
+        verify(utenteRepository, never()).save(any());
+    }
+
+    @Test
+    void aggiornaParziale_password_blank_ignored() {
+        Utente u = ent(1L, "a@a.it", "RSSMRA85T10A562S", Ruolo.DIPENDENTE);
+        u.setPassword("OLD_HASH");
+        when(utenteRepository.findById(1L)).thenReturn(Optional.of(u));
+
+        var updates = new HashMap<String, Object>();
+        updates.put("password", "   "); // blank -> non deve encodare
+        var resp = service.aggiornaParziale(1L, updates);
+
+        assertThat(resp.getStatus()).isEqualTo(200);
+        assertThat(u.getPassword()).isEqualTo("OLD_HASH");
+        verify(passwordEncoder, never()).encode(any());
+        verify(utenteRepository).save(u);
+    }
+
+    @Test
+    void aggiornaParziale_password_nonBlank_encoded() {
+        Utente u = ent(1L, "a@a.it", "RSSMRA85T10A562S", Ruolo.DIPENDENTE);
+        when(utenteRepository.findById(1L)).thenReturn(Optional.of(u));
+        when(passwordEncoder.encode("nuovaPwd")).thenReturn("ENC_NEW");
+
+        var updates = new HashMap<String, Object>();
+        updates.put("password", "nuovaPwd");
+        var resp = service.aggiornaParziale(1L, updates);
+
+        assertThat(resp.getStatus()).isEqualTo(200);
+        assertThat(u.getPassword()).isEqualTo("ENC_NEW");
+        verify(passwordEncoder).encode("nuovaPwd");
+        verify(utenteRepository).save(u);
+    }
+
+    @Test
+    void aggiornaParziale_nome_e_cognome_ok() {
+        Utente u = ent(1L, "a@a.it", "RSSMRA85T10A562S", Ruolo.DIPENDENTE);
+        when(utenteRepository.findById(1L)).thenReturn(Optional.of(u));
+
+        Map<String, Object> updates = new HashMap<>();
+        updates.put("nome", "Luca");
+        updates.put("cognome", "Bianchi");
+        var resp = service.aggiornaParziale(1L, updates);
+
+        assertThat(resp.getStatus()).isEqualTo(200);
+        assertThat(u.getNome()).isEqualTo("Luca");
+        assertThat(u.getCognome()).isEqualTo("Bianchi");
+        verify(utenteRepository).save(u);
+    }
+
+    /* ---------------------- cambiaPasswordUtenteCorrente --------------- */
+
+    @Test
+    void cambiaPassword_notAuthenticated_illegalState() {
+        // nessuna auth nel SecurityContext
+        AggiornaPasswordDto d = new AggiornaPasswordDto();
+        d.setOldPassword("old");
+        d.setNewPassword("new");
+        assertThatThrownBy(() -> service.cambiaPasswordUtenteCorrente(d))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("non autenticato");
+    }
+
+    @Test
+    void cambiaPassword_userNotFound_404() {
+        // utente autenticato come string principal (email)
+        var auth = new UsernamePasswordAuthenticationToken("mario@acme.it", "x", List.of());
+        SecurityContextHolder.getContext().setAuthentication(auth);
+
+        when(utenteRepository.findByEmail("mario@acme.it")).thenReturn(Optional.empty());
+
+        AggiornaPasswordDto d = new AggiornaPasswordDto();
+        d.setOldPassword("old");
+        d.setNewPassword("new");
+
+        assertThatThrownBy(() -> service.cambiaPasswordUtenteCorrente(d))
+                .isInstanceOf(EntityNotFoundException.class);
+    }
+
+    @Test
+    void cambiaPassword_oldMismatch_badCredentials() {
+        var auth = new UsernamePasswordAuthenticationToken("mario@acme.it", "x", List.of());
+        SecurityContextHolder.getContext().setAuthentication(auth);
+
+        Utente u = ent(1L, "mario@acme.it", "RSSMRA85T10A562S", Ruolo.DIPENDENTE);
+        u.setPassword("HASH");
+        when(utenteRepository.findByEmail("mario@acme.it")).thenReturn(Optional.of(u));
+        when(passwordEncoder.matches("old", "HASH")).thenReturn(false);
+
+        AggiornaPasswordDto d = new AggiornaPasswordDto();
+        d.setOldPassword("old");
+        d.setNewPassword("new");
+
+        assertThatThrownBy(() -> service.cambiaPasswordUtenteCorrente(d))
+                .isInstanceOf(BadCredentialsException.class)
+                .hasMessageContaining("attuale errata");
+        verify(utenteRepository, never()).save(any());
+    }
+
+    @Test
+    void cambiaPassword_ok_encoded_and_saved() {
+        var auth = new UsernamePasswordAuthenticationToken("mario@acme.it", "x", List.of());
+        SecurityContextHolder.getContext().setAuthentication(auth);
+
+        Utente u = ent(1L, "mario@acme.it", "RSSMRA85T10A562S", Ruolo.DIPENDENTE);
+        u.setPassword("OLD_HASH");
+        when(utenteRepository.findByEmail("mario@acme.it")).thenReturn(Optional.of(u));
+        when(passwordEncoder.matches("old", "OLD_HASH")).thenReturn(true);
+        when(passwordEncoder.encode("new")).thenReturn("ENC_NEW");
+
+        AggiornaPasswordDto d = new AggiornaPasswordDto();
+        d.setOldPassword("old");
+        d.setNewPassword("new");
+
+        var resp = service.cambiaPasswordUtenteCorrente(d);
+
+        assertThat(resp.getStatus()).isEqualTo(200);
+        assertThat(u.getPassword()).isEqualTo("ENC_NEW");
+        verify(utenteRepository).save(u);
     }
 }
