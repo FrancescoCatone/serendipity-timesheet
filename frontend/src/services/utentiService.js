@@ -14,3 +14,12 @@ export async function deleteUtente(id) {
     const res = await api.delete(`/api/utenti/${id}`)
     return res?.data
 }
+
+export async function createUtente(payload) {
+    try {
+        const res = await api.post('/api/utenti', payload)
+        return res.data?.data
+    } catch (err) {
+        throw err
+    }
+}

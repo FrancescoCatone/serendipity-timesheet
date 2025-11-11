@@ -14,16 +14,8 @@ function Sidebar() {
                 <div>
                     <div className="text-xs uppercase text-gray-500 mb-1">Timesheet</div>
                     <ul className="space-y-1">
-                        <li>
-                            <Link className="block px-2 py-1 rounded hover:bg-gray-100" to="#">
-                                Elenco
-                            </Link>
-                        </li>
-                        <li>
-                            <Link className="block px-2 py-1 rounded hover:bg-gray-100" to="#">
-                                Crea
-                            </Link>
-                        </li>
+                        <li><Link className="block px-2 py-1 rounded hover:bg-gray-100" to="#">Elenco</Link></li>
+                        <li><Link className="block px-2 py-1 rounded hover:bg-gray-100" to="#">Crea</Link></li>
                     </ul>
                 </div>
 
@@ -45,22 +37,15 @@ function Sidebar() {
                         <div>
                             <div className="text-xs uppercase text-gray-500 mb-1">Utenti</div>
                             <ul className="space-y-1">
-                                <li>
-                                    <Link className="block px-2 py-1 rounded hover:bg-gray-100" to="/utenti">
-                                        Elenco
-                                    </Link>
-                                </li>
+                                <li><Link className="block px-2 py-1 rounded hover:bg-gray-100" to="/utenti">Elenco</Link></li>
+                                <li><Link className="block px-2 py-1 rounded hover:bg-gray-100" to="/utenti/crea">Crea</Link></li>
                             </ul>
                         </div>
 
                         <div>
                             <div className="text-xs uppercase text-gray-500 mb-1">Clienti</div>
                             <ul className="space-y-1">
-                                <li>
-                                    <Link className="block px-2 py-1 rounded hover:bg-gray-100" to="#">
-                                        Elenco
-                                    </Link>
-                                </li>
+                                <li><Link className="block px-2 py-1 rounded hover:bg-gray-100" to="#">Elenco</Link></li>
                             </ul>
                         </div>
                     </>

@@ -4,6 +4,8 @@ import { BrowserRouter } from 'react-router-dom'
 import AppRouter from './routes/AppRouter'
 import './index.css'
 
+document.title = 'Serendipity'
+
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <BrowserRouter>

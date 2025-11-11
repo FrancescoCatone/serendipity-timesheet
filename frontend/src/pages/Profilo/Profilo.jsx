@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { changeMyPassword } from '../../services/utenteMeService'
+import PageBar from '../../components/PageBar'
 
 export default function Profilo() {
     const [oldPassword, setOldPassword] = useState('')
@@ -23,9 +24,7 @@ export default function Profilo() {
         try {
             await changeMyPassword(oldPassword, newPassword)
             setMessage('Password modificata con successo ✅')
-            setOldPassword('')
-            setNewPassword('')
-            setConfirmPassword('')
+            setOldPassword(''); setNewPassword(''); setConfirmPassword('')
         } catch {
             setError('Errore durante il cambio password')
         } finally {
@@ -35,43 +34,52 @@ export default function Profilo() {
 
     return (
         <div className="p-6">
-            <h1 className="text-2xl font-bold mb-4">Profilo</h1>
-            <form onSubmit={onSubmit} className="bg-white p-6 rounded-xl border shadow w-[360px]">
-                <label className="block text-sm mb-2">Password attuale</label>
-                <input
-                    type="password"
-                    value={oldPassword}
-                    onChange={(e) => setOldPassword(e.target.value)}
-                    className="border rounded w-full px-3 py-2 mb-3"
-                />
+            {/* Barra con titolo + tasti Indietro/Home */}
+            <PageBar title="Profilo" />
 
-                <label className="block text-sm mb-2">Nuova password</label>
-                <input
-                    type="password"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    className="border rounded w-full px-3 py-2 mb-3"
-                />
+            {/* Contenitore centrale del form */}
+            <div className="flex justify-center">
+                <div className="w-full max-w-md bg-white shadow-lg rounded-2xl p-6 border">
+                    <h1 className="text-2xl font-bold mb-4 text-center">Profilo</h1>
 
-                <label className="block text-sm mb-2">Conferma nuova password</label>
-                <input
-                    type="password"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="border rounded w-full px-3 py-2 mb-4"
-                />
+                    <form onSubmit={onSubmit}>
+                        <label className="block text-sm mb-2">Password attuale</label>
+                        <input
+                            type="password"
+                            value={oldPassword}
+                            onChange={(e) => setOldPassword(e.target.value)}
+                            className="border rounded w-full px-3 py-2 mb-3"
+                        />
 
-                {error && <div className="text-red-600 mb-2">{error}</div>}
-                {message && <div className="text-green-600 mb-2">{message}</div>}
+                        <label className="block text-sm mb-2">Nuova password</label>
+                        <input
+                            type="password"
+                            value={newPassword}
+                            onChange={(e) => setNewPassword(e.target.value)}
+                            className="border rounded w-full px-3 py-2 mb-3"
+                        />
 
-                <button
-                    type="submit"
-                    disabled={loading}
-                    className="border rounded px-3 py-2 w-full"
-                >
-                    {loading ? 'Salvataggio…' : 'Aggiorna password'}
-                </button>
-            </form>
+                        <label className="block text-sm mb-2">Conferma nuova password</label>
+                        <input
+                            type="password"
+                            value={confirmPassword}
+                            onChange={(e) => setConfirmPassword(e.target.value)}
+                            className="border rounded w-full px-3 py-2 mb-4"
+                        />
+
+                        {error && <div className="text-red-600 mb-2">{error}</div>}
+                        {message && <div className="text-green-600 mb-2">{message}</div>}
+
+                        <button
+                            type="submit"
+                            disabled={loading}
+                            className="w-full px-3 py-2 rounded bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            {loading ? 'Aggiornamento…' : 'Aggiorna password'}
+                        </button>
+                    </form>
+                </div>
+            </div>
         </div>
     )
 }
