@@ -133,4 +133,21 @@ public class ClienteController {
         double totale = service.getTotaleOrePerCliente(clienteId, mese, anno);
         return ResponseEntity.ok(new ResponseMessage(200, "Totale ore lavorate", totale));
     }
+
+    /**
+     * Aggiorna parzialmente un cliente.
+     *
+     * @param id      ID del cliente da aggiornare
+     * @param updates Mappa delle proprietà da aggiornare
+     * @return Messaggio di risposta con lo stato dell'operazione
+     */
+    @PreAuthorize("hasRole('ADMIN')")
+    @PatchMapping("/{id}")
+    public ResponseEntity<ResponseMessage> patch(
+            @PathVariable Long id,
+            @RequestBody Map<String, Object> updates) {
+        ResponseMessage resp = service.aggiornaParziale(id, updates);
+        return ResponseEntity.status(resp.getStatus()).body(resp);
+    }
+
 }

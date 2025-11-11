@@ -2,6 +2,7 @@ package com.serendipity.backend.service;
 
 import com.serendipity.backend.mapper.ClienteMapper;
 import com.serendipity.backend.model.dto.ClienteDto;
+import com.serendipity.backend.model.dto.ResponseMessage;
 import com.serendipity.backend.model.dto.create.CreaClienteDto;
 import com.serendipity.backend.model.entity.Cliente;
 import com.serendipity.backend.repository.ClienteRepository;
@@ -9,8 +10,10 @@ import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class ClienteService {
@@ -70,7 +73,7 @@ public class ClienteService {
      * @param id  ID del cliente da aggiornare
      * @param dto Dati aggiornati del cliente
      * @return ClienteDto aggiornato
-     * @throws EntityNotFoundException        se il cliente non esiste
+     * @throws EntityNotFoundException         se il cliente non esiste
      * @throws DataIntegrityViolationException se esiste già un cliente con lo stesso nome
      */
     public ClienteDto update(Long id, CreaClienteDto dto) {
@@ -128,4 +131,46 @@ public class ClienteService {
     public double getTotaleOrePerCliente(Long clienteId, int mese, int anno) {
         return clienteRepository.sommaTotaleOrePerCliente(clienteId, mese, anno);
     }
+
+    /**
+     * Aggiorna parzialmente un cliente.
+     *
+     * @param id      ID del cliente da aggiornare
+     * @param updates Mappa di campi e valori da aggiornare
+     * @return Messaggio di risposta
+     * @throws EntityNotFoundException         se il cliente non esiste
+     * @throws DataIntegrityViolationException se esiste già un cliente con lo stesso nome
+     * @throws IllegalArgumentException        se i dati forniti non sono validi
+     */
+    @Transactional
+    public ResponseMessage aggiornaParziale(Long id, Map<String, Object> updates) {
+        Cliente c = clienteRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Cliente non trovato"));
+
+        // nome (trim, not blank, max 100, unicità case-insensitive)
+        if (updates.containsKey("nome")) {
+            String v = ((String) updates.get("nome")).trim();
+            if (v.isBlank()) throw new IllegalArgumentException("Il nome del cliente è obbligatorio");
+            if (v.length() > 100)
+                throw new IllegalArgumentException("Il nome del cliente non può superare 100 caratteri");
+            if (!c.getNome().equalsIgnoreCase(v) && clienteRepository.existsByNomeIgnoreCase(v)) {
+                throw new DataIntegrityViolationException("Esiste già un cliente con nome: " + v);
+            }
+            c.setNome(v);
+        }
+
+        // tariffaOraria (> 0)
+        if (updates.containsKey("tariffaOraria")) {
+            Double t = null;
+            Object raw = updates.get("tariffaOraria");
+            if (raw instanceof Number n) t = n.doubleValue();
+            else if (raw instanceof String s && !s.isBlank()) t = Double.valueOf(s);
+            if (t == null || t <= 0) throw new IllegalArgumentException("La tariffa oraria deve essere maggiore di 0");
+            c.setTariffaOraria(t);
+        }
+
+        clienteRepository.save(c);
+        return new ResponseMessage(200, "Cliente aggiornato", null, null);
+    }
+
 }
