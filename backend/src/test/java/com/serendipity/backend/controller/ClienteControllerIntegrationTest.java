@@ -25,6 +25,7 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDate;
+import java.util.Map;
 
 import static org.hamcrest.Matchers.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -454,5 +455,160 @@ class ClienteControllerIntegrationTest {
                     .andExpect(status().isForbidden());
         }
 
+    }
+
+    // -----------------------
+// PATCH /api/clienti/{id} (partial update)
+// -----------------------
+
+    @Test
+    @WithMockUser(username = "admin", roles = {"ADMIN"})
+    void patch_updateNome_ok() throws Exception {
+        Cliente c = persistCliente("Acme S.p.A.", 45.0);
+
+        String body = objectMapper.writeValueAsString(Map.of("nome", "Acme Updated"));
+
+        mockMvc.perform(patch("/api/clienti/{id}", c.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value(200))
+                .andExpect(jsonPath("$.message").value("Cliente aggiornato"));
+
+        // verifica persistenza
+        Cliente after = clienteRepository.findById(c.getId()).orElseThrow();
+        org.assertj.core.api.Assertions.assertThat(after.getNome()).isEqualTo("Acme Updated");
+    }
+
+    @Test
+    @WithMockUser(username = "admin", roles = {"ADMIN"})
+    void patch_updateTariffa_ok() throws Exception {
+        Cliente c = persistCliente("Acme S.p.A.", 45.0);
+
+        String body = objectMapper.writeValueAsString(Map.of("tariffaOraria", 72.5));
+
+        mockMvc.perform(patch("/api/clienti/{id}", c.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value(200))
+                .andExpect(jsonPath("$.message").value("Cliente aggiornato"));
+
+        Cliente after = clienteRepository.findById(c.getId()).orElseThrow();
+        org.assertj.core.api.Assertions.assertThat(after.getTariffaOraria()).isEqualTo(72.5);
+    }
+
+    @Test
+    @WithMockUser(username = "admin", roles = {"ADMIN"})
+    void patch_updateNomeETariffa_ok() throws Exception {
+        Cliente c = persistCliente("Acme S.p.A.", 45.0);
+
+        String body = objectMapper.writeValueAsString(Map.of("nome", "Beta SRL", "tariffaOraria", 80.0));
+
+        mockMvc.perform(patch("/api/clienti/{id}", c.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value(200))
+                .andExpect(jsonPath("$.message").value("Cliente aggiornato"));
+
+        Cliente after = clienteRepository.findById(c.getId()).orElseThrow();
+        org.assertj.core.api.Assertions.assertThat(after.getNome()).isEqualTo("Beta SRL");
+        org.assertj.core.api.Assertions.assertThat(after.getTariffaOraria()).isEqualTo(80.0);
+    }
+
+    @Test
+    @WithMockUser(username = "admin", roles = {"ADMIN"})
+    void patch_nomeBlank_badRequest() throws Exception {
+        Cliente c = persistCliente("Acme", 40.0);
+        String body = objectMapper.writeValueAsString(Map.of("nome", "   "));
+
+        mockMvc.perform(patch("/api/clienti/{id}", c.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @WithMockUser(username = "admin", roles = {"ADMIN"})
+    void patch_nomeTooLong_badRequest() throws Exception {
+        Cliente c = persistCliente("Acme", 40.0);
+        String veryLong = "A".repeat(101);
+        String body = objectMapper.writeValueAsString(Map.of("nome", veryLong));
+
+        mockMvc.perform(patch("/api/clienti/{id}", c.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @WithMockUser(username = "admin", roles = {"ADMIN"})
+    void patch_nomeDuplicate_conflict() throws Exception {
+        Cliente c1 = persistCliente("Acme", 40.0);
+        persistCliente("Globex", 50.0);
+
+        String body = objectMapper.writeValueAsString(Map.of("nome", "globex"));
+
+        mockMvc.perform(patch("/api/clienti/{id}", c1.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
+    @WithMockUser(username = "admin", roles = {"ADMIN"})
+    void patch_tariffaZero_badRequest() throws Exception {
+        Cliente c = persistCliente("Acme", 40.0);
+        String body = objectMapper.writeValueAsString(Map.of("tariffaOraria", 0));
+
+        mockMvc.perform(patch("/api/clienti/{id}", c.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @WithMockUser(username = "admin", roles = {"ADMIN"})
+    void patch_tariffaNegative_badRequest() throws Exception {
+        Cliente c = persistCliente("Acme", 40.0);
+        String body = objectMapper.writeValueAsString(Map.of("tariffaOraria", -5.0));
+
+        mockMvc.perform(patch("/api/clienti/{id}", c.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @WithMockUser(username = "admin", roles = {"ADMIN"})
+    void patch_tariffaBlankString_badRequest() throws Exception {
+        Cliente c = persistCliente("Acme", 40.0);
+        String body = objectMapper.writeValueAsString(Map.of("tariffaOraria", "   "));
+
+        mockMvc.perform(patch("/api/clienti/{id}", c.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @WithMockUser(username = "admin", roles = {"ADMIN"})
+    void patch_notFound_404() throws Exception {
+        String body = objectMapper.writeValueAsString(Map.of("nome", "Whatever"));
+        mockMvc.perform(patch("/api/clienti/{id}", 999999L)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @WithMockUser(username = "user", roles = {"USER"})
+    void patch_forbidden_403_forNonAdmin() throws Exception {
+        String body = objectMapper.writeValueAsString(Map.of("nome", "Nope"));
+        mockMvc.perform(patch("/api/clienti/{id}", 1L)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isForbidden());
     }
 }

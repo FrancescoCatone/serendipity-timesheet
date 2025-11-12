@@ -16,6 +16,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -272,7 +273,7 @@ class ClienteServiceTest {
         List<Object[]> res = clienteService.getDipendentiConOreTotaliPerCliente(1L, 10, 2025);
 
         assertEquals(1, res.size());
-        assertEquals("Mario", res.get(0)[1]);
+        assertEquals("Mario", res.getFirst()[1]);
         verify(clienteRepository).findDipendentiConOreTotali(1L, 10, 2025);
     }
 
@@ -285,4 +286,171 @@ class ClienteServiceTest {
         assertEquals(185.5, tot);
         verify(clienteRepository).sommaTotaleOrePerCliente(1L, 10, 2025);
     }
+
+// -------- aggiornaParziale
+
+    @Test
+    void aggiornaParziale_notFound_throwsEntityNotFound() {
+        when(clienteRepository.findById(999L)).thenReturn(Optional.empty());
+
+        assertThrows(EntityNotFoundException.class,
+                () -> clienteService.aggiornaParziale(999L, Map.of("nome", "X")));
+
+        verify(clienteRepository).findById(999L);
+        verify(clienteRepository, never()).save(any());
+    }
+
+    @Test
+    void aggiornaParziale_nome_blank_illegalArgument() {
+        Cliente c = new Cliente();
+        c.setId(1L);
+        c.setNome("Acme");
+        c.setTariffaOraria(50.0);
+        when(clienteRepository.findById(1L)).thenReturn(Optional.of(c));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> clienteService.aggiornaParziale(1L, Map.of("nome", "   ")));
+
+        verify(clienteRepository, never()).save(any());
+    }
+
+    @Test
+    void aggiornaParziale_nome_tooLong_illegalArgument() {
+        Cliente c = new Cliente();
+        c.setId(1L);
+        c.setNome("Acme");
+        when(clienteRepository.findById(1L)).thenReturn(Optional.of(c));
+
+        String veryLong = "A".repeat(101);
+        assertThrows(IllegalArgumentException.class,
+                () -> clienteService.aggiornaParziale(1L, Map.of("nome", veryLong)));
+
+        verify(clienteRepository, never()).save(any());
+    }
+
+    @Test
+    void aggiornaParziale_nome_duplicate_conflict() {
+        Cliente c = new Cliente();
+        c.setId(1L);
+        c.setNome("Acme");
+        when(clienteRepository.findById(1L)).thenReturn(Optional.of(c));
+        when(clienteRepository.existsByNomeIgnoreCase("Beta")).thenReturn(true);
+
+        assertThrows(DataIntegrityViolationException.class,
+                () -> clienteService.aggiornaParziale(1L, Map.of("nome", "  Beta  ")));
+
+        verify(clienteRepository).findById(1L);
+        verify(clienteRepository).existsByNomeIgnoreCase("Beta");
+        verify(clienteRepository, never()).save(any());
+    }
+
+    @Test
+    void aggiornaParziale_nome_sameCaseInsensitive_noUniqCheck_andSaves() {
+        Cliente c = new Cliente();
+        c.setId(1L);
+        c.setNome("Acme");
+        c.setTariffaOraria(50.0);
+        when(clienteRepository.findById(1L)).thenReturn(Optional.of(c));
+
+        var resp = clienteService.aggiornaParziale(1L, Map.of("nome", "  acme  "));
+
+        assertEquals(200, resp.getStatus());
+        assertEquals("acme", c.getNome());
+        verify(clienteRepository).findById(1L);
+        verify(clienteRepository, never()).existsByNomeIgnoreCase(anyString());
+        verify(clienteRepository).save(c);
+    }
+
+    @Test
+    void aggiornaParziale_tariffa_zero_illegalArgument() {
+        Cliente c = new Cliente();
+        c.setId(1L);
+        c.setNome("Acme");
+        c.setTariffaOraria(50.0);
+        when(clienteRepository.findById(1L)).thenReturn(Optional.of(c));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> clienteService.aggiornaParziale(1L, Map.of("tariffaOraria", 0)));
+
+        verify(clienteRepository, never()).save(any());
+    }
+
+    @Test
+    void aggiornaParziale_tariffa_negative_illegalArgument() {
+        Cliente c = new Cliente();
+        c.setId(1L);
+        c.setNome("Acme");
+        c.setTariffaOraria(50.0);
+        when(clienteRepository.findById(1L)).thenReturn(Optional.of(c));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> clienteService.aggiornaParziale(1L, Map.of("tariffaOraria", -10.0)));
+
+        verify(clienteRepository, never()).save(any());
+    }
+
+    @Test
+    void aggiornaParziale_tariffa_blankString_illegalArgument() {
+        Cliente c = new Cliente();
+        c.setId(1L);
+        c.setNome("Acme");
+        c.setTariffaOraria(50.0);
+        when(clienteRepository.findById(1L)).thenReturn(Optional.of(c));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> clienteService.aggiornaParziale(1L, Map.of("tariffaOraria", "   ")));
+
+        verify(clienteRepository, never()).save(any());
+    }
+
+    @Test
+    void aggiornaParziale_tariffa_fromString_ok() {
+        Cliente c = new Cliente();
+        c.setId(1L);
+        c.setNome("Acme");
+        c.setTariffaOraria(50.0);
+        when(clienteRepository.findById(1L)).thenReturn(Optional.of(c));
+
+        var resp = clienteService.aggiornaParziale(1L, Map.of("tariffaOraria", "72.5"));
+
+        assertEquals(200, resp.getStatus());
+        assertEquals(72.5, c.getTariffaOraria(), 0.0001);
+        verify(clienteRepository).save(c);
+    }
+
+    @Test
+    void aggiornaParziale_tariffa_fromNumber_ok() {
+        Cliente c = new Cliente();
+        c.setId(1L);
+        c.setNome("Acme");
+        c.setTariffaOraria(50.0);
+        when(clienteRepository.findById(1L)).thenReturn(Optional.of(c));
+
+        var resp = clienteService.aggiornaParziale(1L, Map.of("tariffaOraria", 99));
+
+        assertEquals(200, resp.getStatus());
+        assertEquals(99.0, c.getTariffaOraria(), 0.0001);
+        verify(clienteRepository).save(c);
+    }
+
+    @Test
+    void aggiornaParziale_updateNomeETariffa_ok() {
+        Cliente c = new Cliente();
+        c.setId(1L);
+        c.setNome("Acme");
+        c.setTariffaOraria(50.0);
+        when(clienteRepository.findById(1L)).thenReturn(Optional.of(c));
+        when(clienteRepository.existsByNomeIgnoreCase("Beta")).thenReturn(false);
+
+        Map<String, Object> updates = Map.of("nome", "  Beta  ", "tariffaOraria", 80.0);
+        var resp = clienteService.aggiornaParziale(1L, updates);
+
+        assertEquals(200, resp.getStatus());
+        assertEquals("Beta", c.getNome());
+        assertEquals(80.0, c.getTariffaOraria(), 0.0001);
+        verify(clienteRepository).existsByNomeIgnoreCase("Beta");
+        verify(clienteRepository).save(c);
+    }
+
+
 }

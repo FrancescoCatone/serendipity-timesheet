@@ -17,16 +17,20 @@ public class PdfRenderer {
     }
 
     public byte[] render(TimesheetSnapshotDto dto) {
-        Context ctx = new Context();
-        ctx.setVariable("ts", dto);
-        String html = templateEngine.process("pdf/timesheet-pdf", ctx);
+        try {
+            Context ctx = new Context();
+            ctx.setVariable("ts", dto);
 
-        try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
-            ITextRenderer renderer = new ITextRenderer();
-            renderer.setDocumentFromString(html);
-            renderer.layout();
-            renderer.createPDF(out);
-            return out.toByteArray();
+            // anche questa riga dentro il try
+            String html = templateEngine.process("pdf/timesheet-pdf", ctx);
+
+            try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+                ITextRenderer renderer = new ITextRenderer();
+                renderer.setDocumentFromString(html);
+                renderer.layout();
+                renderer.createPDF(out);
+                return out.toByteArray();
+            }
         } catch (Exception e) {
             throw new IllegalStateException("Errore durante la generazione del PDF", e);
         }
