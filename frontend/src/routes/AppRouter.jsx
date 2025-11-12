@@ -6,14 +6,23 @@ import UtenteCreate from '../pages/Utenti/UtenteCreate'
 import UtentiList from '../pages/Utenti/UtentiList'
 import Profilo from '../pages/Profilo/Profilo'
 
+import ClientiList from '../pages/Clienti/ClientiList'
+import ClienteCreate from '../pages/Clienti/ClienteCreate'
+
 export default function AppRouter() {
     return (
         <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/" element={<ProtectedRoute><Home /></ProtectedRoute>} />
-            <Route path="/utenti" element={<ProtectedRoute><UtentiList /></ProtectedRoute>} />
+
             <Route path="/profilo" element={<ProtectedRoute><Profilo /></ProtectedRoute>} />
+
+            <Route path="/utenti" element={<ProtectedRoute><UtentiList /></ProtectedRoute>} />
             <Route path="/utenti/crea" element={<ProtectedRoute><UtenteCreate /></ProtectedRoute>} />
+
+            <Route path="/clienti" element={<ProtectedRoute><ClientiList /></ProtectedRoute>} />
+            <Route path="/clienti/crea" element={<ProtectedRoute><ClienteCreate /></ProtectedRoute>} />
+
             <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
     )

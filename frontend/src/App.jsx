@@ -1,9 +1,13 @@
+import { useLocation } from 'react-router-dom'
+import AppRouter from './routes/AppRouter'
+import MainLayout from './layout/MainLayout'
+
 export default function App() {
+  const isLogin = useLocation().pathname === '/login'
+  if (isLogin) return <AppRouter />
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <h1 className="text-3xl font-bold text-blue-600">
-        Tailwind configurato correttamente ✅
-      </h1>
-    </div>
+    <MainLayout>
+      <AppRouter />
+    </MainLayout>
   )
 }

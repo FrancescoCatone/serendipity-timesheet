@@ -17,7 +17,7 @@ export default function UtentiList() {
     const [savingId, setSavingId] = useState(null)
     const [deletingId, setDeletingId] = useState(null)
     const [error, setError] = useState(null)
-    const [info, setInfo] = useState(null)          // <<=== mancava
+    const [info, setInfo] = useState(null)
 
     if (!isAdmin) return <Navigate to="/" replace />
 
