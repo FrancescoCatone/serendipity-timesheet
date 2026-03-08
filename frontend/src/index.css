@@ -61,6 +61,11 @@ button {
   background: var(--color-background);
 }
 
+.auth-container {
+  width: 100%;
+  max-width: 420px;
+}
+
 .auth-card {
   width: 100%;
   max-width: 420px;
@@ -71,17 +76,18 @@ button {
 }
 
 .auth-logo-wrapper {
+  width: 100%;
+  margin-bottom: 24px;
   display: flex;
   justify-content: center;
-  margin-bottom: 20px;
 }
 
 .auth-logo {
-  width: 140px;
-  max-width: 100%;
-  border-radius: 12px;
-  background: white;
-  padding: 6px;
+  width: 100%;
+  max-width: 260px;
+  height: auto;
+  display: block;
+  object-fit: contain;
 }
 
 .auth-card h1 {
