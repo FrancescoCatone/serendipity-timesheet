@@ -1,6 +1,7 @@
 package com.serendipity.backend.service;
 
 import com.serendipity.backend.mapper.UtenteMapper;
+import com.serendipity.backend.model.dto.ProfiloUtenteDto;
 import com.serendipity.backend.model.dto.ResponseMessage;
 import com.serendipity.backend.model.dto.UtenteDto;
 import com.serendipity.backend.model.dto.create.CreaUtenteDto;
@@ -230,6 +231,26 @@ public class UtenteService {
         u.setPassword(passwordEncoder.encode(dto.getNewPassword()));
         utenteRepository.save(u);
         return new ResponseMessage(200, "Password aggiornata");
+    }
+
+    /**
+     * Ottiene il profilo dell'utente attualmente autenticato.
+     *
+     * @return un DTO contenente i dati del profilo dell'utente corrente
+     */
+    public ProfiloUtenteDto getProfiloUtenteCorrente() {
+        String email = getCurrentUsername();
+
+        Utente utente = utenteRepository.findByEmail(email)
+                .orElseThrow(() -> new EntityNotFoundException("Utente non trovato"));
+
+        return new ProfiloUtenteDto(
+                utente.getCodiceFiscale(),
+                utente.getNome(),
+                utente.getCognome(),
+                utente.getEmail(),
+                utente.getRuolo().name()
+        );
     }
 
     /**

@@ -1,5 +1,6 @@
 package com.serendipity.backend.controller;
 
+import com.serendipity.backend.model.dto.ProfiloUtenteDto;
 import com.serendipity.backend.model.dto.ResponseMessage;
 import com.serendipity.backend.model.dto.UtenteDto;
 import com.serendipity.backend.model.dto.create.CreaUtenteDto;
@@ -129,5 +130,17 @@ public class UtenteController {
     public ResponseEntity<ResponseMessage> cambiaPassword(@Valid @RequestBody AggiornaPasswordDto dto) {
         ResponseMessage response = utenteService.cambiaPasswordUtenteCorrente(dto);
         return ResponseEntity.status(response.getStatus()).body(response);
+    }
+
+    /**
+     * Ottiene il profilo dell'utente corrente.
+     *
+     * @return ResponseEntity con il messaggio di risposta
+     */
+    @PreAuthorize("isAuthenticated()")
+    @GetMapping("/me")
+    public ResponseEntity<ResponseMessage> getProfiloUtenteCorrente() {
+        ProfiloUtenteDto profilo = utenteService.getProfiloUtenteCorrente();
+        return ResponseEntity.ok(new ResponseMessage(200, "Profilo utente corrente", profilo));
     }
 }
