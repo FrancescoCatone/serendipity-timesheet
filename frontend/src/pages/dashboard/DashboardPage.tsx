@@ -1,30 +1,48 @@
 import { Link } from 'react-router-dom';
 import PageHeader from '../../components/common/PageHeader';
-
-const cards = [
-    {
-        title: 'Utenti',
-        description: 'Gestisci anagrafiche utenti, ricerca e manutenzione.',
-        path: '/app/utenti',
-    },
-    {
-        title: 'Clienti',
-        description: 'Gestisci clienti e future viste aggregate sulle ore.',
-        path: '/app/clienti',
-    },
-    {
-        title: 'Timesheet',
-        description: 'Consulta, crea e aggiorna i timesheet mensili.',
-        path: '/app/timesheet',
-    },
-    {
-        title: 'Profilo',
-        description: 'Area personale per password e dati utente.',
-        path: '/app/profilo',
-    },
-];
+import { getCurrentUserRole } from '../../utils/auth';
 
 function DashboardPage() {
+    const role = getCurrentUserRole();
+
+    const adminCards = [
+        {
+            title: 'Utenti',
+            description: 'Gestisci anagrafiche utenti, ricerca e manutenzione.',
+            path: '/app/utenti',
+        },
+        {
+            title: 'Clienti',
+            description: 'Gestisci clienti e future viste aggregate sulle ore.',
+            path: '/app/clienti',
+        },
+        {
+            title: 'Timesheet',
+            description: 'Consulta, crea e aggiorna i timesheet mensili.',
+            path: '/app/timesheet',
+        },
+        {
+            title: 'Profilo',
+            description: 'Area personale per password e dati utente.',
+            path: '/app/profilo',
+        },
+    ];
+
+    const dipendenteCards = [
+        {
+            title: 'Timesheet',
+            description: 'Consulta, crea e aggiorna i timesheet mensili.',
+            path: '/app/timesheet',
+        },
+        {
+            title: 'Profilo',
+            description: 'Area personale per password e dati utente.',
+            path: '/app/profilo',
+        },
+    ];
+
+    const cards = role === 'ADMIN' ? adminCards : dipendenteCards;
+
     return (
         <div>
             <PageHeader

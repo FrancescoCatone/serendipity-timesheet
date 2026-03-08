@@ -4,7 +4,10 @@ import DashboardPage from '../pages/dashboard/DashboardPage';
 import NotFoundPage from '../pages/not-found/NotFoundPage';
 import MainLayout from '../components/layout/MainLayout';
 import ProtectedRoute from './ProtectedRoute';
+import RoleRoute from './RoleRoute';
 import UtentiPage from '../pages/utenti/UtentiPage';
+import NuovoUtentePage from '../pages/utenti/NuovoUtentePage';
+import ModificaUtentePage from '../pages/utenti/ModificaUtentePage';
 import ClientiPage from '../pages/clienti/ClientiPage';
 import TimesheetPage from '../pages/timesheet/TimesheetPage';
 import ProfilePage from '../pages/profilo/ProfilePage';
@@ -19,10 +22,15 @@ function AppRouter() {
                 <Route path="/app" element={<MainLayout />}>
                     <Route index element={<Navigate to="dashboard" replace />} />
                     <Route path="dashboard" element={<DashboardPage />} />
-                    <Route path="utenti" element={<UtentiPage />} />
-                    <Route path="clienti" element={<ClientiPage />} />
                     <Route path="timesheet" element={<TimesheetPage />} />
                     <Route path="profilo" element={<ProfilePage />} />
+
+                    <Route element={<RoleRoute allowedRoles={['ADMIN']} />}>
+                        <Route path="utenti" element={<UtentiPage />} />
+                        <Route path="utenti/nuovo" element={<NuovoUtentePage />} />
+                        <Route path="utenti/:id/modifica" element={<ModificaUtentePage />} />
+                        <Route path="clienti" element={<ClientiPage />} />
+                    </Route>
                 </Route>
             </Route>
 

@@ -1,8 +1,8 @@
 import { NavLink, Outlet, useNavigate, Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { logout } from '../../utils/auth';
+import { getCurrentUserRole, logout } from '../../utils/auth';
 
-const menuItems = [
+const adminMenuItems = [
     { label: 'Dashboard', path: '/app/dashboard' },
     { label: 'Utenti', path: '/app/utenti' },
     { label: 'Clienti', path: '/app/clienti' },
@@ -10,8 +10,17 @@ const menuItems = [
     { label: 'Profilo', path: '/app/profilo' },
 ];
 
+const dipendenteMenuItems = [
+    { label: 'Dashboard', path: '/app/dashboard' },
+    { label: 'Timesheet', path: '/app/timesheet' },
+    { label: 'Profilo', path: '/app/profilo' },
+];
+
 function MainLayout() {
     const navigate = useNavigate();
+    const role = getCurrentUserRole();
+
+    const menuItems = role === 'ADMIN' ? adminMenuItems : dipendenteMenuItems;
 
     const handleLogout = () => {
         logout();
@@ -46,8 +55,7 @@ function MainLayout() {
 
             <div className="main-content">
                 <header className="topbar">
-                    <span>Serendipity Timesheet</span>
-
+                    <div />
                     <button onClick={handleLogout} className="logout-button">
                         Logout
                     </button>
