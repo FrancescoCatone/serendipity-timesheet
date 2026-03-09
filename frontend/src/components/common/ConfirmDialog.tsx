@@ -48,7 +48,7 @@ function ConfirmDialog({
                         onClick={onConfirm}
                         disabled={loading}
                     >
-                        {loading ? 'Eliminazione...' : confirmText}
+                        {loading ? 'Operazione in corso...' : confirmText}
                     </button>
                 </div>
             </div>

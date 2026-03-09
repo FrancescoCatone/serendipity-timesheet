@@ -13,6 +13,8 @@ import NuovoClientePage from '../pages/clienti/NuovoClientePage';
 import ModificaClientePage from '../pages/clienti/ModificaClientePage';
 import TimesheetPage from '../pages/timesheet/TimesheetPage';
 import ProfilePage from '../pages/profilo/ProfilePage';
+import NuovoTimesheetPage from '../pages/timesheet/NuovoTimesheetPage';
+import ModificaTimesheetPage from '../pages/timesheet/ModificaTimesheetPage';
 
 function AppRouter() {
     return (
@@ -25,6 +27,8 @@ function AppRouter() {
                     <Route index element={<Navigate to="dashboard" replace />} />
                     <Route path="dashboard" element={<DashboardPage />} />
                     <Route path="timesheet" element={<TimesheetPage />} />
+                    <Route path="timesheet/nuovo" element={<NuovoTimesheetPage />} />
+                    <Route path="timesheet/:id/modifica" element={<ModificaTimesheetPage />} />
                     <Route path="profilo" element={<ProfilePage />} />
 
                     <Route element={<RoleRoute allowedRoles={['ADMIN']} />}>

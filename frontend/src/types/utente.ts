@@ -24,6 +24,7 @@ export interface AggiornaPasswordDto {
 }
 
 export interface ProfiloUtenteDto {
+    id: number;
     codiceFiscale: string;
     nome: string;
     cognome: string;
