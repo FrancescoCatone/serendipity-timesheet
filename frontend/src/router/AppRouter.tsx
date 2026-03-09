@@ -9,6 +9,8 @@ import UtentiPage from '../pages/utenti/UtentiPage';
 import NuovoUtentePage from '../pages/utenti/NuovoUtentePage';
 import ModificaUtentePage from '../pages/utenti/ModificaUtentePage';
 import ClientiPage from '../pages/clienti/ClientiPage';
+import NuovoClientePage from '../pages/clienti/NuovoClientePage';
+import ModificaClientePage from '../pages/clienti/ModificaClientePage';
 import TimesheetPage from '../pages/timesheet/TimesheetPage';
 import ProfilePage from '../pages/profilo/ProfilePage';
 
@@ -29,7 +31,10 @@ function AppRouter() {
                         <Route path="utenti" element={<UtentiPage />} />
                         <Route path="utenti/nuovo" element={<NuovoUtentePage />} />
                         <Route path="utenti/:id/modifica" element={<ModificaUtentePage />} />
+
                         <Route path="clienti" element={<ClientiPage />} />
+                        <Route path="clienti/nuovo" element={<NuovoClientePage />} />
+                        <Route path="clienti/:id/modifica" element={<ModificaClientePage />} />
                     </Route>
                 </Route>
             </Route>
