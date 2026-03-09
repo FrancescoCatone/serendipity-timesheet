@@ -51,8 +51,7 @@ public class TimesheetService {
      * @throws EntityNotFoundException se il timesheet non esiste
      */
     public TimesheetDto findById(Long id) {
-        return mapper.toDto(timesheetRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Timesheet non trovato con ID: " + id)));
+        return mapper.toDto(mustReadOwnedOrAdmin(id));
     }
 
     /**
@@ -61,27 +60,26 @@ public class TimesheetService {
      * @param dto Dati del timesheet da creare
      * @return TimesheetDto creato
      * @throws DataIntegrityViolationException se esiste già un timesheet per lo stesso utente, mese e anno
+     * @throws EntityNotFoundException         se l'utente specificato non esiste
      */
     public TimesheetDto create(CreaTimesheetDto dto) {
+        ensureSelfOrAdmin(dto.getUtenteId());
 
-        Long utenteId = dto.getUtenteId();
-        int mese = dto.getMese();
-        int anno = dto.getAnno();
-
-        ensureSelfOrAdmin(utenteId);
-
-        if (timesheetRepository.existsByUtenteIdAndMeseAndAnno(utenteId, mese, anno)) {
+        if (timesheetRepository.existsByUtenteIdAndMeseAndAnno(dto.getUtenteId(), dto.getMese(), dto.getAnno())) {
             throw new DataIntegrityViolationException(
-                    String.format("Esiste già un timesheet per l'utente %d nel %02d/%d", utenteId, mese, anno)
+                    String.format("Esiste già un timesheet per l'utente %d nel %02d/%d",
+                            dto.getUtenteId(), dto.getMese(), dto.getAnno())
             );
         }
 
         Timesheet entity = new Timesheet();
         entity.setAnno(dto.getAnno());
         entity.setMese(dto.getMese());
-        entity.setDataCompilazione(null); // verrà impostata solo alla chiusura
-        entity.setUtente(utenteRepository.findById(dto.getUtenteId())
-                .orElseThrow(() -> new EntityNotFoundException("Utente non trovato")));
+        entity.setDataCompilazione(null);
+        entity.setUtente(
+                utenteRepository.findById(dto.getUtenteId())
+                        .orElseThrow(() -> new EntityNotFoundException("Utente non trovato"))
+        );
 
         return mapper.toDto(timesheetRepository.save(entity));
     }
@@ -92,44 +90,52 @@ public class TimesheetService {
      * @param id  ID del timesheet da aggiornare
      * @param dto Dati aggiornati del timesheet
      * @return TimesheetDto aggiornato
-     * @throws EntityNotFoundException         se il timesheet non esiste
-     * @throws DataIntegrityViolationException se esiste già un timesheet per lo stesso utente, mese e anno
+     * @throws EntityNotFoundException         se il timesheet o l'utente specificato non esistono, o se l'utente non è autorizzato
+     * @throws AccessDeniedException           se un utente non ADMIN tenta di assegnare il timesheet a un altro utente
+     * @throws IllegalStateException           se si tenta di modificare un timesheet CHIUSO o CONFERMATO (senza essere ADMIN)
+     * @throws DataIntegrityViolationException se esiste già un timesheet per lo stesso utente, mese e anno (diverso dall'originale)
      */
     public TimesheetDto update(Long id, CreaTimesheetDto dto) {
+        Timesheet entity = mustReadOwnedOrAdmin(id);
 
-        Timesheet entity = timesheetRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Timesheet non trovato con ID: " + id));
+        boolean isAdmin = currentUserIsAdmin();
 
-        Long newUtenteId = dto.getUtenteId();
-        int newMese = dto.getMese();
-        int newAnno = dto.getAnno();
-
-        ensureSelfOrAdmin(newUtenteId);
+        if (!isAdmin && !entity.getUtente().getId().equals(dto.getUtenteId())) {
+            throw new AccessDeniedException("Non puoi assegnare il timesheet a un altro utente");
+        }
 
         if (entity.getStato() == TimesheetStato.CHIUSO) {
             throw new AccessDeniedException("Timesheet CHIUSO: impossibile modificare");
         }
-        if (entity.getStato() == TimesheetStato.CONFERMATO && !currentUserIsAdmin()) {
+
+        if (entity.getStato() == TimesheetStato.CONFERMATO && !isAdmin) {
             throw new IllegalStateException("Timesheet CONFERMATO: riaprire (→ APERTO) prima di modificare");
         }
 
-        // Se la combinazione cambia, verifica che non esista già su un altro record
-        if (!entity.getUtente().getId().equals(newUtenteId)
-                || entity.getMese() != newMese
-                || entity.getAnno() != newAnno) {
+        if (!entity.getUtente().getId().equals(dto.getUtenteId())
+                || entity.getMese() != dto.getMese()
+                || entity.getAnno() != dto.getAnno()) {
 
-            boolean exists = timesheetRepository.existsByUtenteIdAndMeseAndAnno(newUtenteId, newMese, newAnno);
+            boolean exists = timesheetRepository.existsByUtenteIdAndMeseAndAnno(
+                    dto.getUtenteId(),
+                    dto.getMese(),
+                    dto.getAnno()
+            );
+
             if (exists) {
                 throw new DataIntegrityViolationException(
-                        String.format("Esiste già un timesheet per l'utente %d nel %02d/%d", newUtenteId, newMese, newAnno)
+                        String.format("Esiste già un timesheet per l'utente %d nel %02d/%d",
+                                dto.getUtenteId(), dto.getMese(), dto.getAnno())
                 );
             }
         }
 
         entity.setMese(dto.getMese());
         entity.setAnno(dto.getAnno());
-        entity.setUtente(utenteRepository.findById(dto.getUtenteId())
-                .orElseThrow(() -> new EntityNotFoundException("Utente non trovato")));
+        entity.setUtente(
+                utenteRepository.findById(dto.getUtenteId())
+                        .orElseThrow(() -> new EntityNotFoundException("Utente non trovato"))
+        );
 
         return mapper.toDto(timesheetRepository.save(entity));
     }
@@ -258,12 +264,14 @@ public class TimesheetService {
 
     /**
      * Riapre un timesheet.
-     * Un timesheet CHIUSO può essere riaperto solo da un ADMIN.
+     * Un timesheet APERTO non può essere riaperto.
+     * Un timesheet CONFERMATO può essere riaperto da chiunque (diventa APERTO).
+     * Un timesheet CHIUSO può essere riaperto solo da ADMIN (diventa CONFERMATO).
      *
      * @param id ID del timesheet da riaprire
      * @return TimesheetDto riaperto
      * @throws EntityNotFoundException se il timesheet non esiste o l'utente non è autorizzato
-     * @throws AccessDeniedException   se un utente non ADMIN tenta di riaprire un timesheet CHIUSO
+     * @throws IllegalStateException   se il timesheet è APERTO o se un DIPENDENTE tenta di riaprire un timesheet CHIUSO
      */
     public TimesheetDto riapri(Long id) {
         Timesheet ts = mustReadOwnedOrAdmin(id);
@@ -271,12 +279,21 @@ public class TimesheetService {
         if (ts.getStato() == TimesheetStato.APERTO) {
             throw new IllegalStateException("Il timesheet è già nello stato APERTO e non può essere riaperto");
         }
-        if (ts.getStato() == TimesheetStato.CHIUSO && !currentUserIsAdmin()) {
-            throw new AccessDeniedException("Solo ADMIN può riaprire un timesheet CHIUSO");
+
+        if (ts.getStato() == TimesheetStato.CONFERMATO) {
+            ts.setStato(TimesheetStato.APERTO);
+            return mapper.toDto(timesheetRepository.save(ts));
         }
 
-        ts.setStato(TimesheetStato.APERTO);
-        return mapper.toDto(timesheetRepository.save(ts));
+        if (ts.getStato() == TimesheetStato.CHIUSO) {
+            if (!currentUserIsAdmin()) {
+                throw new AccessDeniedException("Solo ADMIN può riaprire un timesheet CHIUSO");
+            }
+            ts.setStato(TimesheetStato.CONFERMATO);
+            return mapper.toDto(timesheetRepository.save(ts));
+        }
+
+        throw new IllegalStateException("Transizione di stato non valida");
     }
 
     /**
@@ -403,7 +420,7 @@ public class TimesheetService {
                 .orElseThrow(() -> new EntityNotFoundException("Timesheet non trovato"));
         if (!currentUserIsAdmin()) {
             if (!ts.getUtente().getId().equals(getCurrentUserId())) {
-                throw new EntityNotFoundException("Timesheet non trovato"); // anti-leak
+                throw new EntityNotFoundException("Timesheet non trovato");
             }
         }
         return ts;

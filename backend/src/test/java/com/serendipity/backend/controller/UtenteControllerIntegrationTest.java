@@ -313,5 +313,43 @@ public class UtenteControllerIntegrationTest {
                 .andExpect(status().isForbidden());
     }
 
+    /* ------------------- GET /me (profilo utente corrente) ------------------- */
+
+    @Test
+    void testGetProfiloUtenteCorrente_ok() throws Exception {
+        // crea utente nel DB
+        CreaUtenteDto dto = buildValidAdminDto(); // email: admin.test@serendipity.com
+        mockMvc.perform(post("/api/utenti")
+                        .with(user("admin").roles("ADMIN"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(dto)))
+                .andExpect(status().isCreated());
+
+        // richiede il profilo autenticandosi con quell'email
+        mockMvc.perform(get("/api/utenti/me")
+                        .with(user("admin.test@serendipity.com").roles("ADMIN")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("Profilo utente corrente"))
+                .andExpect(jsonPath("$.data.email").value("admin.test@serendipity.com"))
+                .andExpect(jsonPath("$.data.nome").value("TestAdmin"))
+                .andExpect(jsonPath("$.data.cognome").value("User"))
+                .andExpect(jsonPath("$.data.codiceFiscale").value("TSTADM85T10A562Y"))
+                .andExpect(jsonPath("$.data.ruolo").value("ADMIN"));
+    }
+
+    @Test
+    void testGetProfiloUtenteCorrente_unauthenticated_403() throws Exception {
+        // nessuna autenticazione → Spring Security deve rispondere 403
+        mockMvc.perform(get("/api/utenti/me"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void testGetProfiloUtenteCorrente_userNotInDb_404() throws Exception {
+        // utente autenticato nel SecurityContext ma non presente nel DB → 404
+        mockMvc.perform(get("/api/utenti/me")
+                        .with(user("fantasma@serendipity.com").roles("DIPENDENTE")))
+                .andExpect(status().isNotFound());
+    }
 
 }

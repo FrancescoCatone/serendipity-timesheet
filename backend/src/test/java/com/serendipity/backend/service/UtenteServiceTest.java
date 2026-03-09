@@ -453,4 +453,42 @@ class UtenteServiceTest {
         assertThat(u.getPassword()).isEqualTo("ENC_NEW");
         verify(utenteRepository).save(u);
     }
+
+    /* ------------------- getProfiloUtenteCorrente ---------------------- */
+
+    @Test
+    void getProfiloUtenteCorrente_notAuthenticated_illegalState() {
+        // nessuna auth nel SecurityContext
+        assertThatThrownBy(() -> service.getProfiloUtenteCorrente())
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("non autenticato");
+    }
+
+    @Test
+    void getProfiloUtenteCorrente_userNotFound_404() {
+        var auth = new UsernamePasswordAuthenticationToken("fantasma@acme.it", "x", List.of());
+        SecurityContextHolder.getContext().setAuthentication(auth);
+
+        when(utenteRepository.findByEmail("fantasma@acme.it")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.getProfiloUtenteCorrente())
+                .isInstanceOf(EntityNotFoundException.class);
+    }
+
+    @Test
+    void getProfiloUtenteCorrente_ok_returnsDto() {
+        var auth = new UsernamePasswordAuthenticationToken("mario@acme.it", "x", List.of());
+        SecurityContextHolder.getContext().setAuthentication(auth);
+
+        Utente u = ent(1L, "mario@acme.it", "RSSMRA85T10A562S", Ruolo.DIPENDENTE);
+        when(utenteRepository.findByEmail("mario@acme.it")).thenReturn(Optional.of(u));
+
+        var profilo = service.getProfiloUtenteCorrente();
+
+        assertThat(profilo.codiceFiscale()).isEqualTo("RSSMRA85T10A562S");
+        assertThat(profilo.nome()).isEqualTo("Mario");
+        assertThat(profilo.cognome()).isEqualTo("Rossi");
+        assertThat(profilo.email()).isEqualTo("mario@acme.it");
+        assertThat(profilo.ruolo()).isEqualTo("DIPENDENTE");
+    }
 }

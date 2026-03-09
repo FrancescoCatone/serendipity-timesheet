@@ -37,7 +37,7 @@ public class TimesheetController {
      * @param id ID del timesheet da cercare
      * @return TimesheetDto se trovato
      */
-    @PreAuthorize("hasAnyRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'DIPENDENTE')")
     @GetMapping("/{id}")
     public ResponseEntity<ResponseMessage> getById(@PathVariable Long id) {
         TimesheetDto dto = service.findById(id);

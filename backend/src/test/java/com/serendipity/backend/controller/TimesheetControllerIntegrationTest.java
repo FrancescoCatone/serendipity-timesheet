@@ -407,10 +407,11 @@ public class TimesheetControllerIntegrationTest {
         ts.setStato(TimesheetStato.CHIUSO);
         ts = timesheetRepository.save(ts);
 
+        // CHIUSO → CONFERMATO (primo step del riapri; per tornare APERTO serve un secondo riapri)
         mockMvc.perform(put("/api/timesheets/{id}/riapri", ts.getId()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").value("Timesheet riaperto"))
-                .andExpect(jsonPath("$.data.stato").value("APERTO"));
+                .andExpect(jsonPath("$.data.stato").value("CONFERMATO"));
     }
 
     @Test

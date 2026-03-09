@@ -9,12 +9,16 @@ import com.serendipity.backend.model.enums.TimesheetStato;
 import com.serendipity.backend.repository.TimesheetRepository;
 import com.serendipity.backend.repository.TimesheetRigaRepository;
 import jakarta.persistence.EntityNotFoundException;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -86,6 +90,20 @@ class TimesheetExportServiceTest {
     void setLocale() {
         // assicura mesi in italiano se l'ambiente di build ha locale diverso
         Locale.setDefault(Locale.ITALIAN);
+
+        // imposta un utente ADMIN nel SecurityContext:
+        // currentUserIsAdmin() → true, quindi getCurrentUserId() non viene mai chiamato
+        var auth = new UsernamePasswordAuthenticationToken(
+                "admin@serendipity.com",
+                null,
+                List.of(new SimpleGrantedAuthority("ROLE_ADMIN"))
+        );
+        SecurityContextHolder.getContext().setAuthentication(auth);
+    }
+
+    @AfterEach
+    void clearSecurityContext() {
+        SecurityContextHolder.clearContext();
     }
 
     /* ---------------------- not found ---------------------- */
