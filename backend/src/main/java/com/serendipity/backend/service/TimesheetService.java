@@ -13,6 +13,7 @@ import com.serendipity.backend.repository.UtenteRepository;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
@@ -153,45 +154,34 @@ public class TimesheetService {
         timesheetRepository.deleteById(id);
     }
 
+
     /**
-     * Cerca timesheet per mese, anno e opzionalmente utente (se ADMIN).
+     * Cerca timesheet filtrati per mese, anno e utente.
+     * Gli utenti con ruolo ADMIN possono filtrare per qualsiasi utente,
+     * mentre gli utenti con ruolo DIPENDENTE possono filtrare solo per se stessi (ignora il filtro utenteId).
      *
-     * @param mese     Mese del timesheet
-     * @param anno     Anno del timesheet
-     * @param utenteId (opzionale) ID dell'utente per filtrare (solo ADMIN)
-     * @return Lista di TimesheetDto trovati
-     * @throws IllegalArgumentException se mese o anno non sono validi
-     * @throws EntityNotFoundException  se non vengono trovati timesheet corrispondenti
+     * @param mese     Mese da filtrare (1-12), opzionale
+     * @param anno     Anno da filtrare (es. 2023), opzionale
+     * @param utenteId ID dell'utente da filtrare, opzionale (considerato solo se l'utente è ADMIN)
+     * @return Lista di TimesheetDto che corrispondono ai filtri
+     * @throws IllegalArgumentException se i valori di mese o anno non sono validi
+     * @throws EntityNotFoundException  se non vengono trovati timesheet con i filtri selezionati
      */
     public List<TimesheetDto> search(Integer mese, Integer anno, Long utenteId) {
-        if (mese == null || anno == null) {
-            throw new IllegalArgumentException("Mese e anno sono obbligatori");
-        }
-        if (mese < 1 || mese > 12) {
+        if (mese != null && (mese < 1 || mese > 12)) {
             throw new IllegalArgumentException("Il mese deve essere compreso tra 1 e 12");
         }
 
-        boolean isAdmin = currentUserIsAdmin();
-        List<Timesheet> results;
-
-        if (isAdmin) {
-            if (utenteId != null) {
-                results = timesheetRepository.findByUtenteIdAndMeseAndAnno(utenteId, mese, anno);
-            } else {
-                results = timesheetRepository.findByMeseAndAnno(mese, anno);
-            }
-        } else {
-            Long currentUserId = getCurrentUserId();
-            results = timesheetRepository.findByUtenteIdAndMeseAndAnno(currentUserId, mese, anno);
+        if (anno != null && anno < 2000) {
+            throw new IllegalArgumentException("L'anno deve essere maggiore o uguale a 2000");
         }
 
+        Long effectiveUtenteId = currentUserIsAdmin() ? utenteId : getCurrentUserId();
+
+        List<Timesheet> results = timesheetRepository.searchFiltered(mese, anno, effectiveUtenteId);
+
         if (results.isEmpty()) {
-            throw new EntityNotFoundException(String.format(
-                    "Nessun timesheet trovato per %02d/%d%s",
-                    mese,
-                    anno,
-                    utenteId != null ? " (utente ID " + utenteId + ")" : ""
-            ));
+            throw new EntityNotFoundException("Nessun timesheet trovato con i filtri selezionati");
         }
 
         return results.stream().map(mapper::toDto).toList();
@@ -217,9 +207,8 @@ public class TimesheetService {
     }
 
     /**
-     * Restituisce tutti i timesheet filtrati in base al ruolo dell'utente corrente.
-     * Gli utenti con ruolo ADMIN vedono tutti i timesheet,
-     * mentre gli utenti con ruolo DIPENDENTE vedono solo i propri timesheet.
+     * Restituisce tutti i timesheet filtrati in base al ruolo dell'utente.
+     * Gli utenti con ruolo ADMIN vedono tutti i timesheet, mentre gli utenti con ruolo DIPENDENTE vedono solo i propri timesheet.
      *
      * @return Lista di TimesheetDto filtrati
      */
@@ -227,13 +216,15 @@ public class TimesheetService {
         boolean isAdmin = currentUserIsAdmin();
 
         if (isAdmin) {
-            return timesheetRepository.findAll()
+            return timesheetRepository.findAll(Sort.by(
+                            Sort.Direction.ASC, "anno", "mese"
+                    ))
                     .stream()
                     .map(mapper::toDto)
                     .toList();
         } else {
             Long currentUserId = getCurrentUserId();
-            return timesheetRepository.findByUtenteId(currentUserId)
+            return timesheetRepository.findByUtenteIdOrderByAnnoAscMeseAsc(currentUserId)
                     .stream()
                     .map(mapper::toDto)
                     .toList();

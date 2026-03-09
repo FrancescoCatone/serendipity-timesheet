@@ -95,8 +95,8 @@ public class TimesheetController {
     @PreAuthorize("hasAnyRole('ADMIN','DIPENDENTE')")
     @GetMapping("/search")
     public ResponseEntity<ResponseMessage> search(
-            @RequestParam Integer mese,
-            @RequestParam Integer anno,
+            @RequestParam(required = false) Integer mese,
+            @RequestParam(required = false) Integer anno,
             @RequestParam(required = false) Long utenteId // usato solo se ADMIN
     ) {
         List<TimesheetDto> result = service.search(mese, anno, utenteId);

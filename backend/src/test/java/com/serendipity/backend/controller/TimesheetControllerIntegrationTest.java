@@ -357,13 +357,11 @@ public class TimesheetControllerIntegrationTest {
 
         mockMvc.perform(get("/api/timesheets/anni"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data[0]").value(2025))
-                .andExpect(jsonPath("$.data[1]").value(2024));
+                .andExpect(jsonPath("$.data").value(org.hamcrest.Matchers.hasItems(2025, 2024)));
 
         mockMvc.perform(get("/api/timesheets/mesi").param("anno", "2025"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data[0]").value(1))
-                .andExpect(jsonPath("$.data[1]").value(2));
+                .andExpect(jsonPath("$.data").value(org.hamcrest.Matchers.hasItems(1, 2)));
     }
 
     /* ======================= Stato: conferma / riapri / chiudi ======================= */

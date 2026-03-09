@@ -2,8 +2,8 @@ package com.serendipity.backend.service;
 
 import com.serendipity.backend.mapper.TimesheetMapper;
 import com.serendipity.backend.model.dto.TimesheetDto;
-import com.serendipity.backend.model.dto.create.CreaTimesheetDto;
 import com.serendipity.backend.model.dto.TotaliDto;
+import com.serendipity.backend.model.dto.create.CreaTimesheetDto;
 import com.serendipity.backend.model.entity.Timesheet;
 import com.serendipity.backend.model.entity.Utente;
 import com.serendipity.backend.model.enums.TimesheetStato;
@@ -348,26 +348,36 @@ class TimesheetServiceTest {
     @Test
     void search_argumentsInvalid() {
         authAsAdmin();
-        assertThatThrownBy(() -> service.search(null, 2025, null))
+        assertThatThrownBy(() -> service.search(0, 2025, null))
                 .isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> service.search(13, 2025, null))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
-    void search_admin_allOrByUser_ok() {
+    void search_admin_noUserFilter_ok() {
         authAsAdmin();
         var t1 = ts(1L, 10, user, TimesheetStato.APERTO);
         var t2 = ts(2L, 10, admin, TimesheetStato.APERTO);
 
-        when(timesheetRepository.findByMeseAndAnno(10, 2025)).thenReturn(List.of(t1, t2));
+        // admin + utenteId=null → searchFiltered(10, 2025, null)
+        when(timesheetRepository.searchFiltered(10, 2025, null)).thenReturn(List.of(t1, t2));
         when(mapper.toDto(t1)).thenReturn(dtoFrom(t1));
         when(mapper.toDto(t2)).thenReturn(dtoFrom(t2));
 
         var all = service.search(10, 2025, null);
         assertThat(all).hasSize(2);
+    }
 
-        when(timesheetRepository.findByUtenteIdAndMeseAndAnno(200L, 10, 2025)).thenReturn(List.of(t1));
+    @Test
+    void search_admin_withUserFilter_ok() {
+        authAsAdmin();
+        var t1 = ts(1L, 10, user, TimesheetStato.APERTO);
+
+        // admin + utenteId=200L → searchFiltered(10, 2025, 200L)
+        when(timesheetRepository.searchFiltered(10, 2025, 200L)).thenReturn(List.of(t1));
+        when(mapper.toDto(t1)).thenReturn(dtoFrom(t1));
+
         var onlyUser = service.search(10, 2025, 200L);
         assertThat(onlyUser).extracting(TimesheetDto::utenteId).containsExactly(200L);
     }
@@ -378,7 +388,9 @@ class TimesheetServiceTest {
         stubCurrentUserLookupAsUser();
 
         var own = ts(9L, 10, user, TimesheetStato.APERTO);
-        when(timesheetRepository.findByUtenteIdAndMeseAndAnno(200L, 10, 2025)).thenReturn(List.of(own));
+
+        // non-admin → utenteId passato (999L) viene ignorato, si forza il proprio id (200L)
+        when(timesheetRepository.searchFiltered(10, 2025, 200L)).thenReturn(List.of(own));
         when(mapper.toDto(own)).thenReturn(dtoFrom(own));
 
         var res = service.search(10, 2025, 999L /* ignorato per non-admin */);
@@ -389,7 +401,7 @@ class TimesheetServiceTest {
     @Test
     void search_notFound_throws() {
         authAsAdmin();
-        when(timesheetRepository.findByMeseAndAnno(10, 2025)).thenReturn(Collections.emptyList());
+        when(timesheetRepository.searchFiltered(10, 2025, null)).thenReturn(Collections.emptyList());
         assertThatThrownBy(() -> service.search(10, 2025, null))
                 .isInstanceOf(EntityNotFoundException.class);
     }
@@ -416,7 +428,8 @@ class TimesheetServiceTest {
         var t1 = ts(1L, 10, admin, TimesheetStato.APERTO);
         var t2 = ts(2L, 9, user, TimesheetStato.APERTO);
 
-        when(timesheetRepository.findAll()).thenReturn(List.of(t1, t2));
+        when(timesheetRepository.findAll(any(org.springframework.data.domain.Sort.class)))
+                .thenReturn(List.of(t1, t2));
         when(mapper.toDto(t1)).thenReturn(dtoFrom(t1));
         when(mapper.toDto(t2)).thenReturn(dtoFrom(t2));
 
@@ -431,7 +444,7 @@ class TimesheetServiceTest {
 
         var own = ts(3L, 10, user, TimesheetStato.APERTO);
 
-        when(timesheetRepository.findByUtenteId(200L)).thenReturn(List.of(own));
+        when(timesheetRepository.findByUtenteIdOrderByAnnoAscMeseAsc(200L)).thenReturn(List.of(own));
         when(mapper.toDto(own)).thenReturn(dtoFrom(own));
 
         var res = service.findAllFiltered();
