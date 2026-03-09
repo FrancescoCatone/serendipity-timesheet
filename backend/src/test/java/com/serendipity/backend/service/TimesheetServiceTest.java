@@ -102,19 +102,23 @@ class TimesheetServiceTest {
         SecurityContextHolder.getContext().setAuthentication(auth);
     }
 
-    private Timesheet ts(Long id, int mese, int anno, Utente owner, TimesheetStato stato) {
+    private Timesheet ts(Long id, int mese, Utente owner, TimesheetStato stato) {
         Timesheet t = new Timesheet();
         t.setId(id);
         t.setMese(mese);
-        t.setAnno(anno);
+        t.setAnno(2025);
         t.setUtente(owner);
         t.setStato(stato);
         return t;
     }
 
     private TimesheetDto dtoFrom(Timesheet t) {
+        String nomeCompleto = t.getUtente() != null
+                ? t.getUtente().getNome() + " " + t.getUtente().getCognome()
+                : null;
         return new TimesheetDto(t.getId(), t.getMese(), t.getAnno(), t.getDataCompilazione(),
                 t.getUtente() != null ? t.getUtente().getId() : null,
+                nomeCompleto,
                 t.getStato() != null ? t.getStato().name() : null);
     }
 
@@ -127,7 +131,7 @@ class TimesheetServiceTest {
     @Test
     void findById_ok() {
         authAsAdmin();
-        var t = ts(1L, 10, 2025, admin, TimesheetStato.APERTO);
+        var t = ts(1L, 10, admin, TimesheetStato.APERTO);
         when(timesheetRepository.findById(1L)).thenReturn(Optional.of(t));
         when(mapper.toDto(t)).thenReturn(dtoFrom(t));
 
@@ -161,7 +165,7 @@ class TimesheetServiceTest {
         when(timesheetRepository.existsByUtenteIdAndMeseAndAnno(200L, 10, 2025)).thenReturn(false);
         when(utenteRepository.findById(200L)).thenReturn(Optional.of(user));
 
-        var saved = ts(10L, 10, 2025, user, TimesheetStato.APERTO);
+        var saved = ts(10L, 10, user, TimesheetStato.APERTO);
         when(timesheetRepository.save(any(Timesheet.class))).thenReturn(saved);
         when(mapper.toDto(saved)).thenReturn(dtoFrom(saved));
 
@@ -183,7 +187,7 @@ class TimesheetServiceTest {
         when(timesheetRepository.existsByUtenteIdAndMeseAndAnno(200L, 9, 2025)).thenReturn(false);
         when(utenteRepository.findById(200L)).thenReturn(Optional.of(user));
 
-        var saved = ts(11L, 9, 2025, user, TimesheetStato.APERTO);
+        var saved = ts(11L, 9, user, TimesheetStato.APERTO);
         when(timesheetRepository.save(any(Timesheet.class))).thenReturn(saved);
         when(mapper.toDto(saved)).thenReturn(dtoFrom(saved));
 
@@ -240,7 +244,7 @@ class TimesheetServiceTest {
     @Test
     void update_ok_changeMonthYear_sameOwner() {
         authAsAdmin();
-        var existing = ts(1L, 9, 2025, user, TimesheetStato.APERTO);
+        var existing = ts(1L, 9, user, TimesheetStato.APERTO);
         when(timesheetRepository.findById(1L)).thenReturn(Optional.of(existing));
         when(utenteRepository.findById(200L)).thenReturn(Optional.of(user));
         when(timesheetRepository.existsByUtenteIdAndMeseAndAnno(200L, 10, 2025)).thenReturn(false);
@@ -250,7 +254,7 @@ class TimesheetServiceTest {
         dto.setMese(10);
         dto.setAnno(2025);
 
-        var saved = ts(1L, 10, 2025, user, TimesheetStato.APERTO);
+        var saved = ts(1L, 10, user, TimesheetStato.APERTO);
         when(timesheetRepository.save(any(Timesheet.class))).thenReturn(saved);
         when(mapper.toDto(saved)).thenReturn(dtoFrom(saved));
 
@@ -275,7 +279,7 @@ class TimesheetServiceTest {
     @Test
     void update_forbidden_whenClosed() {
         authAsAdmin();
-        var existing = ts(1L, 9, 2025, user, TimesheetStato.CHIUSO);
+        var existing = ts(1L, 9, user, TimesheetStato.CHIUSO);
         when(timesheetRepository.findById(1L)).thenReturn(Optional.of(existing));
 
         CreaTimesheetDto dto = new CreaTimesheetDto();
@@ -292,7 +296,7 @@ class TimesheetServiceTest {
         authAsUser();
         stubCurrentUserLookupAsUser();
 
-        var existing = ts(1L, 9, 2025, user, TimesheetStato.CONFERMATO);
+        var existing = ts(1L, 9, user, TimesheetStato.CONFERMATO);
         when(timesheetRepository.findById(1L)).thenReturn(Optional.of(existing));
 
         CreaTimesheetDto dto = new CreaTimesheetDto();
@@ -308,7 +312,7 @@ class TimesheetServiceTest {
     @Test
     void update_conflict_whenChangingToExistingCombination() {
         authAsAdmin();
-        var existing = ts(1L, 9, 2025, user, TimesheetStato.APERTO);
+        var existing = ts(1L, 9, user, TimesheetStato.APERTO);
         when(timesheetRepository.findById(1L)).thenReturn(Optional.of(existing));
         when(timesheetRepository.existsByUtenteIdAndMeseAndAnno(200L, 10, 2025)).thenReturn(true);
 
@@ -353,8 +357,8 @@ class TimesheetServiceTest {
     @Test
     void search_admin_allOrByUser_ok() {
         authAsAdmin();
-        var t1 = ts(1L, 10, 2025, user, TimesheetStato.APERTO);
-        var t2 = ts(2L, 10, 2025, admin, TimesheetStato.APERTO);
+        var t1 = ts(1L, 10, user, TimesheetStato.APERTO);
+        var t2 = ts(2L, 10, admin, TimesheetStato.APERTO);
 
         when(timesheetRepository.findByMeseAndAnno(10, 2025)).thenReturn(List.of(t1, t2));
         when(mapper.toDto(t1)).thenReturn(dtoFrom(t1));
@@ -373,7 +377,7 @@ class TimesheetServiceTest {
         authAsUser();
         stubCurrentUserLookupAsUser();
 
-        var own = ts(9L, 10, 2025, user, TimesheetStato.APERTO);
+        var own = ts(9L, 10, user, TimesheetStato.APERTO);
         when(timesheetRepository.findByUtenteIdAndMeseAndAnno(200L, 10, 2025)).thenReturn(List.of(own));
         when(mapper.toDto(own)).thenReturn(dtoFrom(own));
 
@@ -409,8 +413,8 @@ class TimesheetServiceTest {
     @Test
     void findAllFiltered_admin_getsAll() {
         authAsAdmin();
-        var t1 = ts(1L, 10, 2025, admin, TimesheetStato.APERTO);
-        var t2 = ts(2L, 9, 2025, user, TimesheetStato.APERTO);
+        var t1 = ts(1L, 10, admin, TimesheetStato.APERTO);
+        var t2 = ts(2L, 9, user, TimesheetStato.APERTO);
 
         when(timesheetRepository.findAll()).thenReturn(List.of(t1, t2));
         when(mapper.toDto(t1)).thenReturn(dtoFrom(t1));
@@ -425,7 +429,7 @@ class TimesheetServiceTest {
         authAsUser();
         stubCurrentUserLookupAsUser();
 
-        var own = ts(3L, 10, 2025, user, TimesheetStato.APERTO);
+        var own = ts(3L, 10, user, TimesheetStato.APERTO);
 
         when(timesheetRepository.findByUtenteId(200L)).thenReturn(List.of(own));
         when(mapper.toDto(own)).thenReturn(dtoFrom(own));
@@ -442,7 +446,7 @@ class TimesheetServiceTest {
         authAsUser();
         stubCurrentUserLookupAsUser();
 
-        var t = ts(1L, 10, 2025, user, TimesheetStato.APERTO);
+        var t = ts(1L, 10, user, TimesheetStato.APERTO);
 
         when(timesheetRepository.findById(1L)).thenReturn(Optional.of(t));
         // timesheet completo → ogni giorno presente (semplifico: il service controlla size con set.contains(..))
@@ -457,7 +461,7 @@ class TimesheetServiceTest {
         for (int d = 1; d <= 31; d++) allDates.add(LocalDate.of(2025, 10, d));
         when(rigaRepository.findDistinctDateByTimesheetId(1L)).thenReturn(allDates);
 
-        var saved = ts(1L, 10, 2025, user, TimesheetStato.CONFERMATO);
+        var saved = ts(1L, 10, user, TimesheetStato.CONFERMATO);
         when(timesheetRepository.save(any(Timesheet.class))).thenReturn(saved);
         when(mapper.toDto(saved)).thenReturn(dtoFrom(saved));
 
@@ -470,7 +474,7 @@ class TimesheetServiceTest {
         authAsUser();
         stubCurrentUserLookupAsUser();
 
-        var t = ts(1L, 10, 2025, user, TimesheetStato.CONFERMATO);
+        var t = ts(1L, 10, user, TimesheetStato.CONFERMATO);
         when(timesheetRepository.findById(1L)).thenReturn(Optional.of(t));
 
         assertThatThrownBy(() -> service.conferma(1L))
@@ -483,7 +487,7 @@ class TimesheetServiceTest {
         authAsUser();
         stubCurrentUserLookupAsUser();
 
-        var t = ts(1L, 10, 2025, user, TimesheetStato.APERTO);
+        var t = ts(1L, 10, user, TimesheetStato.APERTO);
         when(timesheetRepository.findById(1L)).thenReturn(Optional.of(t));
         // già configurato default: lista date vuota -> incompleto
 
@@ -501,7 +505,7 @@ class TimesheetServiceTest {
         authAsUser();
         stubCurrentUserLookupAsUser();
 
-        var t = ts(1L, 10, 2025, user, TimesheetStato.APERTO);
+        var t = ts(1L, 10, user, TimesheetStato.APERTO);
         when(timesheetRepository.findById(1L)).thenReturn(Optional.of(t));
 
         assertThatThrownBy(() -> service.riapri(1L))
@@ -514,7 +518,7 @@ class TimesheetServiceTest {
         authAsUser();
         stubCurrentUserLookupAsUser();
 
-        var t = ts(1L, 10, 2025, user, TimesheetStato.CHIUSO);
+        var t = ts(1L, 10, user, TimesheetStato.CHIUSO);
         when(timesheetRepository.findById(1L)).thenReturn(Optional.of(t));
 
         assertThatThrownBy(() -> service.riapri(1L))
@@ -525,15 +529,16 @@ class TimesheetServiceTest {
     @Test
     void riapri_ok_whenChiuso_andAdmin() {
         authAsAdmin();
-        var t = ts(1L, 10, 2025, user, TimesheetStato.CHIUSO);
+        var t = ts(1L, 10, user, TimesheetStato.CHIUSO);
         when(timesheetRepository.findById(1L)).thenReturn(Optional.of(t));
 
-        var saved = ts(1L, 10, 2025, user, TimesheetStato.APERTO);
+        // CHIUSO → CONFERMATO (primo step; per tornare APERTO serve un secondo riapri)
+        var saved = ts(1L, 10, user, TimesheetStato.CONFERMATO);
         when(timesheetRepository.save(any(Timesheet.class))).thenReturn(saved);
         when(mapper.toDto(saved)).thenReturn(dtoFrom(saved));
 
         var out = service.riapri(1L);
-        assertThat(out.stato()).isEqualTo(TimesheetStato.APERTO.name());
+        assertThat(out.stato()).isEqualTo(TimesheetStato.CONFERMATO.name());
     }
 
     @Test
@@ -541,10 +546,10 @@ class TimesheetServiceTest {
         authAsUser();
         stubCurrentUserLookupAsUser();
 
-        var t = ts(1L, 10, 2025, user, TimesheetStato.CONFERMATO);
+        var t = ts(1L, 10, user, TimesheetStato.CONFERMATO);
         when(timesheetRepository.findById(1L)).thenReturn(Optional.of(t));
 
-        var saved = ts(1L, 10, 2025, user, TimesheetStato.APERTO);
+        var saved = ts(1L, 10, user, TimesheetStato.APERTO);
         when(timesheetRepository.save(any(Timesheet.class))).thenReturn(saved);
         when(mapper.toDto(saved)).thenReturn(dtoFrom(saved));
 
@@ -559,7 +564,7 @@ class TimesheetServiceTest {
         authAsUser();
         stubCurrentUserLookupAsUser();
 
-        var t = ts(1L, 10, 2025, user, TimesheetStato.APERTO);
+        var t = ts(1L, 10, user, TimesheetStato.APERTO);
         when(timesheetRepository.findById(1L)).thenReturn(Optional.of(t));
 
         assertThatThrownBy(() -> service.chiudi(1L))
@@ -572,10 +577,10 @@ class TimesheetServiceTest {
         authAsUser();
         stubCurrentUserLookupAsUser();
 
-        var t = ts(1L, 10, 2025, user, TimesheetStato.CONFERMATO);
+        var t = ts(1L, 10, user, TimesheetStato.CONFERMATO);
         when(timesheetRepository.findById(1L)).thenReturn(Optional.of(t));
 
-        var saved = ts(1L, 10, 2025, user, TimesheetStato.CHIUSO);
+        var saved = ts(1L, 10, user, TimesheetStato.CHIUSO);
         saved.setDataCompilazione(LocalDate.now());
         when(timesheetRepository.save(any(Timesheet.class))).thenReturn(saved);
         when(mapper.toDto(saved)).thenReturn(dtoFrom(saved));
@@ -592,7 +597,7 @@ class TimesheetServiceTest {
         authAsUser();
         stubCurrentUserLookupAsUser();
 
-        var t = ts(1L, 10, 2025, user, TimesheetStato.APERTO);
+        var t = ts(1L, 10, user, TimesheetStato.APERTO);
         when(timesheetRepository.findById(1L)).thenReturn(Optional.of(t));
 
         when(rigaRepository.sumTotaliByTimesheetId(1L))
@@ -609,7 +614,7 @@ class TimesheetServiceTest {
         authAsUser();
         stubCurrentUserLookupAsUser();
 
-        var t = ts(1L, 10, 2025, user, TimesheetStato.APERTO);
+        var t = ts(1L, 10, user, TimesheetStato.APERTO);
         when(timesheetRepository.findById(1L)).thenReturn(Optional.of(t));
 
         when(rigaRepository.sumTotaliPerCliente(1L)).thenReturn(Collections.emptyList());
@@ -626,7 +631,7 @@ class TimesheetServiceTest {
         authAsUser();
         stubCurrentUserLookupAsUser();
 
-        var others = ts(1L, 10, 2025, admin, TimesheetStato.APERTO); // owner = admin (id=100), non è mio (id=200)
+        var others = ts(1L, 10, admin, TimesheetStato.APERTO); // owner = admin (id=100), non è mio (id=200)
         when(timesheetRepository.findById(1L)).thenReturn(Optional.of(others));
 
         assertThatThrownBy(() -> service.conferma(1L))

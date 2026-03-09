@@ -245,6 +245,7 @@ public class UtenteService {
                 .orElseThrow(() -> new EntityNotFoundException("Utente non trovato"));
 
         return new ProfiloUtenteDto(
+                utente.getId(),
                 utente.getCodiceFiscale(),
                 utente.getNome(),
                 utente.getCognome(),

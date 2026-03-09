@@ -8,5 +8,7 @@ public record TimesheetDto(
         int anno,
         LocalDate dataCompilazione,
         Long utenteId,
+        String utenteNomeCompleto,
         String stato
-) {}
+) {
+}

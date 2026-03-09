@@ -12,6 +12,7 @@ public interface TimesheetMapper {
     TimesheetMapper INSTANCE = Mappers.getMapper(TimesheetMapper.class);
 
     @Mapping(source = "utente.id", target = "utenteId")
+    @Mapping(expression = "java(entity.getUtente().getNome() + \" \" + entity.getUtente().getCognome())", target = "utenteNomeCompleto")
     @Mapping(source = "stato", target = "stato")
     TimesheetDto toDto(Timesheet entity);
 }
