@@ -281,6 +281,7 @@ public class TimesheetService {
                 throw new AccessDeniedException("Solo ADMIN può riaprire un timesheet CHIUSO");
             }
             ts.setStato(TimesheetStato.CONFERMATO);
+            ts.setDataCompilazione(null);
             return mapper.toDto(timesheetRepository.save(ts));
         }
 

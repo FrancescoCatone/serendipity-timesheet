@@ -168,7 +168,7 @@ public class TimesheetRigaService {
 
         ensureOwnedOrAdmin(ts); // ADMIN ok; DIP solo proprietario
 
-        return rigaRepository.findByTimesheetId(timesheetId).stream()
+        return rigaRepository.findByTimesheetIdOrdered(timesheetId).stream()
                 .map(mapper::toDto)
                 .toList();
     }

@@ -26,7 +26,7 @@ public class ClienteController {
      *
      * @return Lista di Clienti come ClienteDto
      */
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'DIPENDENTE')")
     @GetMapping
     public ResponseEntity<ResponseMessage> getAll() {
         List<ClienteDto> clienti = service.findAll();
@@ -39,7 +39,7 @@ public class ClienteController {
      * @param id ID del cliente da cercare
      * @return ClienteDto se trovato
      */
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'DIPENDENTE')")
     @GetMapping("/{id}")
     public ResponseEntity<ResponseMessage> getById(@PathVariable Long id) {
         ClienteDto dto = service.findById(id);

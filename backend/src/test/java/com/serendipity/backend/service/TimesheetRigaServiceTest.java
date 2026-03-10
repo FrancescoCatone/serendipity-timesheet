@@ -508,7 +508,7 @@ class TimesheetRigaServiceTest {
         r.setTimesheet(tsUserAperto);
 
         when(timesheetRepository.findById(tsUserAperto.getId())).thenReturn(Optional.of(tsUserAperto));
-        when(rigaRepository.findByTimesheetId(tsUserAperto.getId())).thenReturn(List.of(r));
+        when(rigaRepository.findByTimesheetIdOrdered(tsUserAperto.getId())).thenReturn(List.of(r));
         when(mapper.toDto(r)).thenReturn(dtoFrom(r));
 
         var out = service.findByTimesheetId(tsUserAperto.getId());
