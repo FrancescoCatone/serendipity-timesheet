@@ -18,6 +18,7 @@ import type { TimesheetRigaDto } from '../../types/timesheetRiga';
 import { getCurrentUserRole } from '../../utils/auth';
 import { getErrorMessage } from '../../utils/error';
 import BackButton from '../../components/common/BackButton';
+import { isFestivoItaliano } from '../../utils/calendar';
 
 type UserOption = {
     id: number;
@@ -110,16 +111,8 @@ function ModificaTimesheetPage() {
     });
 
     const isReadOnly = useMemo(() => {
-        if (form.stato === 'CHIUSO') {
-            return true;
-        }
-
-        if (form.stato === 'CONFERMATO' && role !== 'ADMIN') {
-            return true;
-        }
-
-        return false;
-    }, [form.stato, role]);
+        return form.stato === 'CONFERMATO' || form.stato === 'CHIUSO';
+    }, [form.stato]);
 
     const resetRigaForm = useCallback((mese?: number, anno?: number) => {
         setRigaForm({
@@ -576,7 +569,7 @@ function ModificaTimesheetPage() {
                 {isReadOnly ? (
                     <div style={{ marginBottom: '1rem' }}>
                         <p className="page-subtitle">
-                            In questo stato puoi consultare le righe ma non modificarle.
+                            Questo timesheet è in sola lettura nello stato attuale.
                         </p>
                     </div>
                 ) : null}
@@ -697,37 +690,43 @@ function ModificaTimesheetPage() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {righe.map((riga) => (
-                                    <tr key={riga.id}>
-                                        <td>{formatDate(riga.data)}</td>
-                                        <td>{riga.clienteNome}</td>
-                                        <td>{riga.ore}</td>
-                                        <td>{riga.minuti}</td>
-                                        <td>{riga.orario.toFixed(2)} ore</td>
-                                        <td>{formatCurrency(riga.costoOrario)}</td>
-                                        <td>
-                                            <div className="table-actions">
-                                                <button
-                                                    type="button"
-                                                    className="table-action-button edit"
-                                                    onClick={() => startEditRiga(riga)}
-                                                    disabled={isReadOnly || righeSaving || deletingRigaId !== null}
-                                                >
-                                                    Modifica
-                                                </button>
+                                {righe.map((riga) => {
+                                    const isFestivo = isFestivoItaliano(riga.data);
 
-                                                <button
-                                                    type="button"
-                                                    className="table-action-button delete"
-                                                    onClick={() => openDeleteDialog(riga)}
-                                                    disabled={isReadOnly || righeSaving || deletingRigaId === riga.id}
-                                                >
-                                                    {deletingRigaId === riga.id ? 'Eliminazione...' : 'Elimina'}
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
+                                    return (
+                                        <tr key={riga.id} className={isFestivo ? 'festivo-row' : ''}>
+                                            <td className={isFestivo ? 'festivo-date-cell' : ''}>
+                                                {formatDate(riga.data)}
+                                            </td>
+                                            <td>{riga.clienteNome}</td>
+                                            <td>{riga.ore}</td>
+                                            <td>{riga.minuti}</td>
+                                            <td><span className="riga-metrica">{riga.orario.toFixed(2)} ore</span></td>
+                                            <td><span className="riga-metrica">{formatCurrency(riga.costoOrario)}</span></td>
+                                            <td>
+                                                <div className="table-actions">
+                                                    <button
+                                                        type="button"
+                                                        className="table-action-button edit"
+                                                        onClick={() => startEditRiga(riga)}
+                                                        disabled={isReadOnly || righeSaving || deletingRigaId !== null}
+                                                    >
+                                                        Modifica
+                                                    </button>
+
+                                                    <button
+                                                        type="button"
+                                                        className="table-action-button delete"
+                                                        onClick={() => openDeleteDialog(riga)}
+                                                        disabled={isReadOnly || righeSaving || deletingRigaId === riga.id}
+                                                    >
+                                                        {deletingRigaId === riga.id ? 'Eliminazione...' : 'Elimina'}
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
                             </tbody>
                         </table>
                     </div>

@@ -785,3 +785,55 @@ button {
     grid-template-columns: 1fr;
   }
 }
+
+.app-table td {
+  vertical-align: middle;
+}
+
+.app-table td:first-child {
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.app-table td:nth-child(2) {
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.app-table td:nth-child(3),
+.app-table td:nth-child(4),
+.app-table td:nth-child(5),
+.app-table td:nth-child(6) {
+  font-variant-numeric: tabular-nums;
+}
+
+.festivo-row {
+  background: #fff7f7;
+}
+
+.festivo-row:hover {
+  background: #ffecec !important;
+}
+
+.festivo-date-cell {
+  color: #dc2626;
+  font-weight: 800;
+}
+
+.festivo-date-cell::after {
+  content: " • festivo";
+  font-size: 12px;
+  font-weight: 600;
+  color: #b91c1c;
+  margin-left: 6px;
+}
+
+.riga-metrica {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  font-weight: 700;
+}
