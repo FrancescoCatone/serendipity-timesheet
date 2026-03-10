@@ -214,7 +214,6 @@ public class TimesheetControllerIntegrationTest {
     @Test
     @WithMockUser(username = "user@serendipity.com", roles = {"DIPENDENTE"})
     void conferma_ok_asDipendente() throws Exception {
-        // Timesheet APERTO del dipendente per 10/2025
         Timesheet ts = new Timesheet();
         ts.setAnno(2025);
         ts.setMese(10);
@@ -222,27 +221,6 @@ public class TimesheetControllerIntegrationTest {
         ts.setStato(TimesheetStato.APERTO);
         ts = timesheetRepository.save(ts);
 
-        // Un cliente qualsiasi per valorizzare le righe
-        Cliente c = new Cliente();
-        c.setNome("Cliente Test");
-        c.setTariffaOraria(10.0);
-        c = clienteRepository.save(c);
-
-        // Popola TUTTI i giorni del mese con una riga valida
-        java.time.YearMonth ym = java.time.YearMonth.of(2025, 10);
-        for (int d = 1; d <= ym.lengthOfMonth(); d++) {
-            TimesheetRiga r = new TimesheetRiga();
-            r.setTimesheet(ts);
-            r.setCliente(c);
-            r.setData(java.time.LocalDate.of(2025, 10, d));
-            r.setOre(1);
-            r.setMinuti(0);
-            r.setOrario(1.0);           // calcolato dal service, ma qui basta coerenza
-            r.setCostoOrario(10.0);     // idem
-            rigaRepository.save(r);
-        }
-
-        // Ora il TS è completo → conferma deve andare a buon fine
         mockMvc.perform(put("/api/timesheets/{id}/conferma", ts.getId()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").value("Timesheet confermato"))
@@ -366,19 +344,6 @@ public class TimesheetControllerIntegrationTest {
 
     /* ======================= Stato: conferma / riapri / chiudi ======================= */
 
-    @Test
-    @WithMockUser(username = "admin@serendipity.com", roles = "ADMIN")
-    void conferma_conflictIfIncomplete() throws Exception {
-        Timesheet ts = new Timesheet();
-        ts.setAnno(2025);
-        ts.setMese(6);
-        ts.setUtente(dipendente);
-        ts = timesheetRepository.save(ts);
-
-        mockMvc.perform(put("/api/timesheets/{id}/conferma", ts.getId()))
-                .andExpect(status().isConflict()) // 409
-                .andExpect(jsonPath("$.message").value("Timesheet non completo: mancano righe per alcuni giorni"));
-    }
 
     @Test
     @WithMockUser(username = "admin@serendipity.com", roles = "ADMIN")

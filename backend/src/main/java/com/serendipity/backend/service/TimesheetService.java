@@ -43,6 +43,9 @@ public class TimesheetService {
     @Autowired
     private TimesheetMapper mapper;
 
+    @Autowired
+    private CalendarioFestivitaService calendarioFestivitaService;
+
 
     /**
      * Trova un timesheet per ID.
@@ -233,22 +236,20 @@ public class TimesheetService {
 
     /**
      * Conferma un timesheet.
-     * Un timesheet può essere confermato solo se è nello stato APERTO e
-     * se è completo (ha righe per tutti i giorni del mese).
+     * Un timesheet può essere confermato solo se è nello stato APERTO.
      *
      * @param id ID del timesheet da confermare
      * @return TimesheetDto confermato
      * @throws EntityNotFoundException se il timesheet non esiste o l'utente non è autorizzato
-     * @throws IllegalStateException   se il timesheet non è APERTO o non è completo
+     * @throws IllegalStateException   se il timesheet non è APERTO
      */
     public TimesheetDto conferma(Long id) {
-        Timesheet ts = mustReadOwnedOrAdmin(id); // helper: carica e verifica proprietà/permessi
+        Timesheet ts = mustReadOwnedOrAdmin(id);
+
         if (ts.getStato() != TimesheetStato.APERTO) {
             throw new IllegalStateException("Puoi confermare solo un timesheet APERTO");
         }
-        if (!isCompleto(ts.getId(), ts.getMese(), ts.getAnno())) {
-            throw new IllegalStateException("Timesheet non completo: mancano righe per alcuni giorni");
-        }
+
         ts.setStato(TimesheetStato.CONFERMATO);
         return mapper.toDto(timesheetRepository.save(ts));
     }
@@ -364,25 +365,32 @@ public class TimesheetService {
     }
 
     /**
-     * Verifica se un timesheet è completo per un dato mese e anno.
-     * Un timesheet è considerato completo se ha almeno una riga per ogni giorno del mese.
+     * Verifica se un timesheet è completo, ovvero se ha una riga compilata per ogni giorno lavorativo del mese (escludendo festivi).
      *
      * @param timesheetId ID del timesheet da verificare
-     * @param mese        Mese da verificare (1-12)
-     * @param anno        Anno da verificare (es. 2023)
+     * @param mese        Mese di riferimento (1-12)
+     * @param anno        Anno di riferimento (es. 2023)
      * @return true se il timesheet è completo, false altrimenti
      */
     private boolean isCompleto(Long timesheetId, int mese, int anno) {
         List<LocalDate> date = rigaRepository.findDistinctDateByTimesheetId(timesheetId);
+        Set<LocalDate> compilate = new HashSet<>(date);
+
         YearMonth ym = YearMonth.of(anno, mese);
-        int giorni = ym.lengthOfMonth();
-        // ogni giorno del mese deve avere almeno una riga
-        Set<LocalDate> set = new HashSet<>(date);
-        for (int d = 1; d <= giorni; d++) {
-            if (!set.contains(LocalDate.of(anno, mese, d))) {
+        int giorniNelMese = ym.lengthOfMonth();
+
+        for (int giorno = 1; giorno <= giorniNelMese; giorno++) {
+            LocalDate current = LocalDate.of(anno, mese, giorno);
+
+            if (calendarioFestivitaService.isFestivo(current)) {
+                continue;
+            }
+
+            if (!compilate.contains(current)) {
                 return false;
             }
         }
+
         return true;
     }
 
@@ -417,6 +425,5 @@ public class TimesheetService {
         }
         return ts;
     }
-
 
 }

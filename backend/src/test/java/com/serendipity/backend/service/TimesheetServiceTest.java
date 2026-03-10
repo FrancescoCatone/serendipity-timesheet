@@ -50,6 +50,8 @@ class TimesheetServiceTest {
     private TimesheetRigaRepository rigaRepository;
     @Mock
     private TimesheetMapper mapper;
+    @Mock
+    private CalendarioFestivitaService calendarioFestivitaService;
 
     private Utente admin;
     private Utente user;
@@ -455,24 +457,12 @@ class TimesheetServiceTest {
     // conferma ----------------------------------------------------------------
 
     @Test
-    void conferma_ok_whenAperto_andCompleto() {
+    void conferma_ok_whenAperto() {
         authAsUser();
         stubCurrentUserLookupAsUser();
 
         var t = ts(1L, 10, user, TimesheetStato.APERTO);
-
         when(timesheetRepository.findById(1L)).thenReturn(Optional.of(t));
-        // timesheet completo → ogni giorno presente (semplifico: il service controlla size con set.contains(..))
-        // per evitare di dover costruire tutte le date, restituisco direttamente "completo" via spy sul service?
-        // più semplice: facciamo finta che sia completo restituendo tutte le date.
-        // Ma il service chiama rigaRepository.findDistinctDateByTimesheetId(1L) -> set contains tutti i giorni;
-        // Per non generarle, trucco: mese di 1 giorno? Non possibile. Allora mock per 2-3 giorni + YearMonth di ottobre (31).
-        // Soluzione: stubbare con una collezione che copre tutto non è pratico qui, quindi usiamo doAnswer per sostituire save:
-        // In verità serve solo che isCompleto(...) ritorni true: simuliamolo restituendo una lista che copre tutti i giorni 1..31.
-
-        var allDates = new ArrayList<java.time.LocalDate>();
-        for (int d = 1; d <= 31; d++) allDates.add(LocalDate.of(2025, 10, d));
-        when(rigaRepository.findDistinctDateByTimesheetId(1L)).thenReturn(allDates);
 
         var saved = ts(1L, 10, user, TimesheetStato.CONFERMATO);
         when(timesheetRepository.save(any(Timesheet.class))).thenReturn(saved);
@@ -495,21 +485,6 @@ class TimesheetServiceTest {
                 .hasMessageContaining("APERTO");
     }
 
-    @Test
-    void conferma_illegal_whenIncomplete() {
-        authAsUser();
-        stubCurrentUserLookupAsUser();
-
-        var t = ts(1L, 10, user, TimesheetStato.APERTO);
-        when(timesheetRepository.findById(1L)).thenReturn(Optional.of(t));
-        // già configurato default: lista date vuota -> incompleto
-
-        when(rigaRepository.findDistinctDateByTimesheetId(1L)).thenReturn(Collections.emptyList());
-
-        assertThatThrownBy(() -> service.conferma(1L))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("non completo");
-    }
 
     // riapri ------------------------------------------------------------------
 
