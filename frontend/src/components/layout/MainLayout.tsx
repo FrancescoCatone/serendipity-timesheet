@@ -37,7 +37,6 @@ function MainLayout() {
                         alt="Serendipity"
                         className="sidebar-logo"
                     />
-                    <p className="sidebar-subtitle">Timesheet App</p>
                 </Link>
 
                 <nav className="sidebar-nav">

@@ -413,6 +413,29 @@ button {
   font-weight: 700;
 }
 
+.stato-badge {
+  display: inline-block;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.stato-badge.aperto {
+  background: #dcfce7;
+  color: #16a34a;
+}
+
+.stato-badge.confermato {
+  background: #fef9c3;
+  color: #b45309;
+}
+
+.stato-badge.chiuso {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
 .action-link-button {
   display: inline-flex;
   align-items: center;
@@ -614,6 +637,18 @@ button {
   background: #fee2e2;
   border-color: #fca5a5;
   color: #b91c1c;
+}
+
+.table-action-button.export {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+  color: #15803d;
+}
+
+.table-action-button.export:hover {
+  background: #dcfce7;
+  border-color: #86efac;
+  color: #166534;
 }
 
 .table-action-button:disabled {

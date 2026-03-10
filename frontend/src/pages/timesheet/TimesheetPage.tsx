@@ -479,7 +479,9 @@ function TimesheetPage() {
                                         {role === 'ADMIN' ? <td>{timesheet.utenteNomeCompleto}</td> : null}
 
                                         <td>
-                                            <span className="role-badge">{timesheet.stato}</span>
+                                            <span className={`stato-badge ${timesheet.stato.toLowerCase()}`}>
+                                                {timesheet.stato}
+                                            </span>
                                         </td>
 
                                         <td>{formatCompilazione(timesheet.dataCompilazione)}</td>
@@ -540,7 +542,7 @@ function TimesheetPage() {
                                                 {canExport(timesheet) ? (
                                                     <button
                                                         type="button"
-                                                        className="table-action-button edit"
+                                                        className="table-action-button export"
                                                         onClick={() => handleExport(timesheet)}
                                                         disabled={actionLoadingId === timesheet.id}
                                                     >
