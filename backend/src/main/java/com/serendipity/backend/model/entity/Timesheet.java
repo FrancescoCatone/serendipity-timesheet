@@ -4,8 +4,6 @@ import com.serendipity.backend.model.enums.TimesheetStato;
 import jakarta.persistence.*;
 
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
 
 @Entity
 @Table(
@@ -36,9 +34,6 @@ public class Timesheet {
     @ManyToOne
     @JoinColumn(name = "utente_id", nullable = false)
     private Utente utente;
-
-    @OneToMany(mappedBy = "timesheet", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<TimesheetRiga> timesheetRighe = new ArrayList<>();
 
     @PrePersist
     void prePersist() {
@@ -83,14 +78,6 @@ public class Timesheet {
 
     public void setUtente(Utente utente) {
         this.utente = utente;
-    }
-
-    public List<TimesheetRiga> getTimesheetRighe() {
-        return timesheetRighe;
-    }
-
-    public void setTimesheetRighe(List<TimesheetRiga> righe) {
-        this.timesheetRighe = righe;
     }
 
     public TimesheetStato getStato() {

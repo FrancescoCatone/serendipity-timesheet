@@ -21,7 +21,6 @@ public class PdfRenderer {
             Context ctx = new Context();
             ctx.setVariable("ts", dto);
 
-            // anche questa riga dentro il try
             String html = templateEngine.process("pdf/timesheet-pdf", ctx);
 
             try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {

@@ -112,7 +112,7 @@ class UtenteServiceTest {
         var out = service.getAll();
 
         assertThat(out).hasSize(1);
-        assertThat(out.get(0).email()).isEqualTo("a@a.it");
+        assertThat(out.getFirst().email()).isEqualTo("a@a.it");
     }
 
     /* ----------------------------- findById ---------------------------- */

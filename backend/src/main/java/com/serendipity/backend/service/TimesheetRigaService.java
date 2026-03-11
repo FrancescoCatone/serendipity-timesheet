@@ -39,18 +39,19 @@ public class TimesheetRigaService {
     @Autowired
     private UtenteRepository utenteRepository;
 
+
     /**
-     * Recupera tutte le righe del timesheet.
+     * Recupera tutte le righe del timesheet visibili all'utente corrente.
+     * Gli admin vedono tutte le righe, i dipendenti vedono solo le proprie.
      *
-     * @return una lista di DTO contenenti i dati di tutte le righe del timesheet
+     * @return Lista di TimesheetRigaDto
      */
     public List<TimesheetRigaDto> findAll() {
-        if (currentUserIsAdmin()) {
-            return rigaRepository.findAll().stream().map(mapper::toDto).toList();
-        }
-        Long me = getCurrentUserId();
-        return rigaRepository.findAll().stream()
-                .filter(r -> r.getTimesheet() != null && r.getTimesheet().getUtente().getId().equals(me))
+        List<TimesheetRiga> righe = currentUserIsAdmin()
+                ? rigaRepository.findAllOrdered()
+                : rigaRepository.findByTimesheetUtenteId(getCurrentUserId());
+
+        return righe.stream()
                 .map(mapper::toDto)
                 .toList();
     }
@@ -75,7 +76,7 @@ public class TimesheetRigaService {
      * @param dto Dati della riga del timesheet da creare
      * @return TimesheetRigaDto creato
      * @throws EntityNotFoundException se il timesheet o il cliente non esistono
-     * @throws AccessDeniedException   se l'utente non ha i permessi necessari
+     * @throws AccessDeniedException   se l'utente non ha i permessi necessari o il timesheet non è modificabile
      */
     public TimesheetRigaDto save(CreaTimesheetRigaDto dto) {
         Timesheet ts = timesheetRepository.findById(dto.getTimesheetId())
@@ -97,8 +98,8 @@ public class TimesheetRigaService {
      * @param id  ID della riga del timesheet da aggiornare
      * @param dto Dati aggiornati della riga del timesheet
      * @return TimesheetRigaDto aggiornato
-     * @throws EntityNotFoundException se la riga o il timesheet non esistono
-     * @throws AccessDeniedException   se l'utente non ha i permessi necessari o il timesheet non è modificabile
+     * @throws EntityNotFoundException se la riga, il timesheet o il cliente non esistono, o se l'utente non è autorizzato
+     * @throws IllegalStateException   se il timesheet associato è in uno stato non modificabile
      */
     public TimesheetRigaDto update(Long id, CreaTimesheetRigaDto dto) {
         TimesheetRiga existing = rigaRepository.findById(id)
@@ -121,7 +122,7 @@ public class TimesheetRigaService {
      *
      * @param id ID della riga del timesheet da eliminare
      * @throws EntityNotFoundException se la riga non esiste o l'utente non è autorizzato
-     * @throws AccessDeniedException   se il timesheet è in uno stato non modificabile
+     * @throws IllegalStateException   se il timesheet associato è in uno stato non modificabile
      */
     public void delete(Long id) {
         TimesheetRiga existing = rigaRepository.findById(id)
@@ -129,28 +130,28 @@ public class TimesheetRigaService {
         Timesheet ts = existing.getTimesheet();
         ensureOwnedOrAdmin(ts);
         ensureTimesheetIsEditable(ts);
-        rigaRepository.deleteById(id);
+        rigaRepository.delete(existing);
     }
 
     /**
      * Filtra le righe del timesheet in base a cliente, utente e data, con controlli di autorizzazione.
      *
      * @param clienteId ID del cliente da filtrare (opzionale)
-     * @param utenteId  ID dell'utente da filtrare (opzionale, solo per ADMIN)
+     * @param utenteId  ID dell'utente da filtrare (opzionale, ignorato dai dipendenti)
      * @param dataStr   Data da filtrare in formato ISO (opzionale)
      * @return Lista di TimesheetRigaDto che soddisfano i criteri di filtro
      */
     public List<TimesheetRigaDto> filtra(Long clienteId, Long utenteId, String dataStr) {
         boolean admin = currentUserIsAdmin();
-        Long me = admin ? null : getCurrentUserId();
 
-        return rigaRepository.findAll().stream()
-                .filter(r -> clienteId == null || r.getCliente().getId().equals(clienteId))
-                .filter(r -> {
-                    Long owner = r.getTimesheet().getUtente().getId();
-                    return admin ? (utenteId == null || owner.equals(utenteId)) : owner.equals(me);
-                })
-                .filter(r -> dataStr == null || r.getData().equals(LocalDate.parse(dataStr)))
+        Long effectiveUtenteId = admin ? utenteId : getCurrentUserId();
+        LocalDate data = dataStr != null ? LocalDate.parse(dataStr) : null;
+
+        List<TimesheetRiga> righe = (data == null)
+                ? rigaRepository.searchFilteredWithoutData(clienteId, effectiveUtenteId)
+                : rigaRepository.searchFilteredWithData(clienteId, effectiveUtenteId, data);
+
+        return righe.stream()
                 .map(mapper::toDto)
                 .toList();
     }
@@ -215,15 +216,16 @@ public class TimesheetRigaService {
     }
 
     /**
-     * Vietiamo modifiche se TS è CHIUSO. Se CONFERMATO → solo ADMIN può modificare.
+     * Controlla che il timesheet sia in uno stato modificabile (non CONFERMATO o CHIUSO).
+     *
+     * @param ts il timesheet da verificare
+     * @throws IllegalStateException se il timesheet è in uno stato non modificabile
      */
     private void ensureTimesheetIsEditable(Timesheet ts) {
         TimesheetStato stato = ts.getStato();
-        if (stato == TimesheetStato.CHIUSO) {
-            throw new AccessDeniedException("Timesheet CHIUSO: non modificabile");
-        }
-        if (stato == TimesheetStato.CONFERMATO && !currentUserIsAdmin()) {
-            throw new IllegalStateException("Timesheet CONFERMATO: riaprire (→ APERTO) prima di modificare");
+
+        if (stato == TimesheetStato.CONFERMATO || stato == TimesheetStato.CHIUSO) {
+            throw new IllegalStateException("Timesheet non modificabile nello stato attuale");
         }
     }
 
@@ -304,8 +306,8 @@ public class TimesheetRigaService {
     /**
      * Calcola il costo totale in base all’orario e alla tariffa oraria del cliente.
      *
-     * @param orario                orario in formato decimale
-     * @param tariffaOrariaCliente  tariffa oraria del cliente
+     * @param orario               orario in formato decimale
+     * @param tariffaOrariaCliente tariffa oraria del cliente
      * @return costo totale arrotondato a 2 decimali
      */
     private double calcCosto(double orario, double tariffaOrariaCliente) {

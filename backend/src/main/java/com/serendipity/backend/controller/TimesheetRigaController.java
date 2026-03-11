@@ -32,10 +32,10 @@ public class TimesheetRigaController {
     }
 
     /**
-     * Trova una riga del timesheet per ID.
+     * Recupera una riga del timesheet per ID.
      *
-     * @param id ID della riga del timesheet da cercare
-     * @return TimesheetRigaDto se trovato
+     * @param id ID della riga del timesheet da recuperare
+     * @return TimesheetRigaDto contenente i dati della riga del timesheet specificata
      */
     @PreAuthorize("hasAnyRole('ADMIN', 'DIPENDENTE')")
     @GetMapping("/{id}")
@@ -47,8 +47,8 @@ public class TimesheetRigaController {
     /**
      * Crea una nuova riga del timesheet.
      *
-     * @param dto Dati della riga del timesheet da creare
-     * @return TimesheetRigaDto creato
+     * @param dto Dati della nuova riga del timesheet da creare
+     * @return TimesheetRigaDto della riga creata
      */
     @PreAuthorize("hasAnyRole('ADMIN', 'DIPENDENTE')")
     @PostMapping
@@ -85,12 +85,12 @@ public class TimesheetRigaController {
     }
 
     /**
-     * Filtra le righe del timesheet in base a parametri opzionali.
+     * Filtra le righe del timesheet in base a criteri opzionali: cliente, utente e data.
      *
-     * @param clienteId (opzionale) ID del cliente per filtrare
-     * @param utenteId  (opzionale) ID dell'utente per filtrare
-     * @param data      (opzionale) Data in formato "yyyy-MM-dd" per filtrare
-     * @return una lista di DTO contenenti i dati delle righe del timesheet che corrispondono ai criteri di filtro
+     * @param clienteId ID del cliente (opzionale)
+     * @param utenteId  ID dell'utente (opzionale)
+     * @param data      Data in formato "yyyy-MM-dd" (opzionale)
+     * @return una lista di DTO contenenti i dati delle righe del timesheet che soddisfano i criteri di filtro
      */
     @PreAuthorize("hasAnyRole('ADMIN', 'DIPENDENTE')")
     @GetMapping("/filter")

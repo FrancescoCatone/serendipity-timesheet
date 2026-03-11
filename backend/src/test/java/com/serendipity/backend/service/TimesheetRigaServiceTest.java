@@ -56,9 +56,9 @@ class TimesheetRigaServiceTest {
     private Utente admin;
     private Utente user;
 
-    private Timesheet tsUserAperto;       // TS owner=user, APERTO
-    private Timesheet tsUserConfermato;   // TS owner=user, CONFERMATO
-    private Timesheet tsUserChiuso;       // TS owner=user, CHIUSO
+    private Timesheet tsUserAperto;
+    private Timesheet tsUserConfermato;
+    private Timesheet tsUserChiuso;
 
     private Cliente c1;
 
@@ -69,12 +69,12 @@ class TimesheetRigaServiceTest {
         user = new Utente();
         setUtente(user, 200L, "user@acme.it");
 
-        tsUserAperto = ts(1L, 10, 2025, user, TimesheetStato.APERTO);
-        tsUserConfermato = ts(2L, 10, 2025, user, TimesheetStato.CONFERMATO);
-        tsUserChiuso = ts(3L, 10, 2025, user, TimesheetStato.CHIUSO);
+        tsUserAperto = ts(1L, user, TimesheetStato.APERTO);
+        tsUserConfermato = ts(2L, user, TimesheetStato.CONFERMATO);
+        tsUserChiuso = ts(3L, user, TimesheetStato.CHIUSO);
 
         c1 = new Cliente();
-        setCliente(c1, 10L, "Acme", 12.0);
+        setCliente(c1);
     }
 
     @AfterEach
@@ -94,25 +94,25 @@ class TimesheetRigaServiceTest {
         u.setEmail(email);
     }
 
-    private Timesheet ts(Long id, int mese, int anno, Utente owner, TimesheetStato stato) {
+    private Timesheet ts(Long id, Utente owner, TimesheetStato stato) {
         Timesheet t = new Timesheet();
         t.setId(id);
-        t.setMese(mese);
-        t.setAnno(anno);
+        t.setMese(10);
+        t.setAnno(2025);
         t.setUtente(owner);
         t.setStato(stato);
         return t;
     }
 
-    private void setCliente(Cliente c, Long id, String nome, double tariffa) {
+    private void setCliente(Cliente c) {
         try {
             var f = Cliente.class.getDeclaredField("id");
             f.setAccessible(true);
-            f.set(c, id);
+            f.set(c, (Long) 10L);
         } catch (Exception ignore) {
         }
-        c.setNome(nome);
-        c.setTariffaOraria(tariffa);
+        c.setNome("Acme");
+        c.setTariffaOraria(12.0);
     }
 
     private void authAsAdmin() {
@@ -154,7 +154,7 @@ class TimesheetRigaServiceTest {
         r2.setId(2L);
         r2.setTimesheet(tsUserAperto);
 
-        when(rigaRepository.findAll()).thenReturn(List.of(r1, r2));
+        when(rigaRepository.findAllOrdered()).thenReturn(List.of(r1, r2));
         when(mapper.toDto(r1)).thenReturn(dtoFrom(r1));
         when(mapper.toDto(r2)).thenReturn(dtoFrom(r2));
 
@@ -166,20 +166,16 @@ class TimesheetRigaServiceTest {
     void findAll_user_getsOnlyOwn() {
         authAsUser();
 
-        Timesheet tsOtherOwner = ts(9L, 10, 2025, admin, TimesheetStato.APERTO);
         TimesheetRiga rOwn = new TimesheetRiga();
         rOwn.setId(1L);
         rOwn.setTimesheet(tsUserAperto);
-        TimesheetRiga rOther = new TimesheetRiga();
-        rOther.setId(2L);
-        rOther.setTimesheet(tsOtherOwner);
 
-        when(rigaRepository.findAll()).thenReturn(List.of(rOwn, rOther));
+        when(rigaRepository.findByTimesheetUtenteId(user.getId())).thenReturn(List.of(rOwn));
         when(mapper.toDto(rOwn)).thenReturn(dtoFrom(rOwn));
 
         var out = service.findAll();
         assertThat(out).hasSize(1);
-        assertThat(out.get(0).getTimesheetId()).isEqualTo(tsUserAperto.getId());
+        assertThat(out.getFirst().getTimesheetId()).isEqualTo(tsUserAperto.getId());
     }
 
     /* =========================== findById =========================== */
@@ -201,7 +197,7 @@ class TimesheetRigaServiceTest {
     void findById_hiddenForNotOwner() {
         // utente autenticato è 'user', la riga appartiene a TS di admin
         authAsUser();
-        Timesheet otherTs = ts(5L, 10, 2025, admin, TimesheetStato.APERTO);
+        Timesheet otherTs = ts(5L, admin, TimesheetStato.APERTO);
         TimesheetRiga r = new TimesheetRiga();
         r.setId(10L);
         r.setTimesheet(otherTs);
@@ -259,8 +255,8 @@ class TimesheetRigaServiceTest {
         when(timesheetRepository.findById(tsUserChiuso.getId())).thenReturn(Optional.of(tsUserChiuso));
 
         assertThatThrownBy(() -> service.save(dto))
-                .isInstanceOf(AccessDeniedException.class)
-                .hasMessageContaining("Timesheet CHIUSO");
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("non modificabile");
     }
 
     @Test
@@ -278,11 +274,11 @@ class TimesheetRigaServiceTest {
 
         assertThatThrownBy(() -> service.save(dto))
                 .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("CONFERMATO");
+                .hasMessageContaining("non modificabile");
     }
 
     @Test
-    void save_ok_whenTsConfermato_andAdmin() {
+    void save_illegal_whenTsConfermato_evenForAdmin() {
         authAsAdmin();
 
         CreaTimesheetRigaDto dto = new CreaTimesheetRigaDto();
@@ -293,12 +289,10 @@ class TimesheetRigaServiceTest {
         dto.setMinuti(45);
 
         when(timesheetRepository.findById(tsUserConfermato.getId())).thenReturn(Optional.of(tsUserConfermato));
-        when(clienteRepository.findById(c1.getId())).thenReturn(Optional.of(c1));
-        when(rigaRepository.save(any(TimesheetRiga.class))).thenAnswer(inv -> inv.getArgument(0));
-        when(mapper.toDto(any(TimesheetRiga.class))).thenAnswer(inv -> dtoFrom(inv.getArgument(0)));
 
-        var out = service.save(dto);
-        assertThat(out.getMinuti()).isEqualTo(45);
+        assertThatThrownBy(() -> service.save(dto))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("non modificabile");
     }
 
     @Test
@@ -408,7 +402,29 @@ class TimesheetRigaServiceTest {
 
         assertThatThrownBy(() -> service.update(61L, dto))
                 .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("CONFERMATO");
+                .hasMessageContaining("non modificabile");
+    }
+
+    @Test
+    void update_illegal_whenTsConfermato_evenForAdmin() {
+        authAsAdmin();
+
+        TimesheetRiga existing = new TimesheetRiga();
+        existing.setId(62L);
+        existing.setTimesheet(tsUserConfermato);
+
+        when(rigaRepository.findById(62L)).thenReturn(Optional.of(existing));
+
+        CreaTimesheetRigaDto dto = new CreaTimesheetRigaDto();
+        dto.setTimesheetId(tsUserConfermato.getId());
+        dto.setClienteId(c1.getId());
+        dto.setData(LocalDate.of(2025, 10, 10));
+        dto.setOre(1);
+        dto.setMinuti(0);
+
+        assertThatThrownBy(() -> service.update(62L, dto))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("non modificabile");
     }
 
     /* =========================== delete =========================== */
@@ -424,7 +440,7 @@ class TimesheetRigaServiceTest {
         when(rigaRepository.findById(70L)).thenReturn(Optional.of(existing));
 
         service.delete(70L);
-        verify(rigaRepository).deleteById(70L);
+        verify(rigaRepository).delete(existing);
     }
 
     @Test
@@ -438,8 +454,8 @@ class TimesheetRigaServiceTest {
         when(rigaRepository.findById(71L)).thenReturn(Optional.of(existing));
 
         assertThatThrownBy(() -> service.delete(71L))
-                .isInstanceOf(AccessDeniedException.class)
-                .hasMessageContaining("Timesheet CHIUSO");
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("non modificabile");
     }
 
     /* =========================== filtra =========================== */
@@ -448,53 +464,85 @@ class TimesheetRigaServiceTest {
     void filtra_admin_filtersByClienteUserData() {
         authAsAdmin();
 
-        Timesheet tsAdmin = ts(4L, 10, 2025, admin, TimesheetStato.APERTO);
+        Timesheet tsAdmin = ts(4L, admin, TimesheetStato.APERTO);
         TimesheetRiga r1 = new TimesheetRiga();
         r1.setId(1L);
         r1.setTimesheet(tsUserAperto);
         r1.setCliente(c1);
         r1.setData(LocalDate.of(2025, 10, 10));
+
         TimesheetRiga r2 = new TimesheetRiga();
         r2.setId(2L);
         r2.setTimesheet(tsAdmin);
         r2.setCliente(c1);
         r2.setData(LocalDate.of(2025, 10, 10));
+
         TimesheetRiga r3 = new TimesheetRiga();
         r3.setId(3L);
         r3.setTimesheet(tsAdmin);
         r3.setCliente(c1);
         r3.setData(LocalDate.of(2025, 10, 11));
 
-        when(rigaRepository.findAll()).thenReturn(List.of(r1, r2, r3));
-        when(mapper.toDto(any(TimesheetRiga.class))).thenAnswer(inv -> dtoFrom(inv.getArgument(0)));
+        when(rigaRepository.searchFilteredWithData(
+                c1.getId(),
+                admin.getId(),
+                LocalDate.of(2025, 10, 10)))
+                .thenReturn(List.of(r2));
+
+        when(mapper.toDto(r2)).thenReturn(dtoFrom(r2));
 
         var out = service.filtra(c1.getId(), admin.getId(), "2025-10-10");
         assertThat(out).hasSize(1);
-        assertThat(out.get(0).getId()).isEqualTo(2L);
+        assertThat(out.getFirst().getId()).isEqualTo(2L);
     }
 
     @Test
     void filtra_user_seesOnlyOwn_ignoresUserIdParam() {
         authAsUser();
 
-        Timesheet tsAdmin = ts(4L, 10, 2025, admin, TimesheetStato.APERTO);
+        Timesheet tsAdmin = ts(4L, admin, TimesheetStato.APERTO);
         TimesheetRiga rMine = new TimesheetRiga();
         rMine.setId(10L);
         rMine.setTimesheet(tsUserAperto);
         rMine.setCliente(c1);
         rMine.setData(LocalDate.of(2025, 10, 10));
+
         TimesheetRiga rOther = new TimesheetRiga();
         rOther.setId(11L);
         rOther.setTimesheet(tsAdmin);
         rOther.setCliente(c1);
         rOther.setData(LocalDate.of(2025, 10, 10));
 
-        when(rigaRepository.findAll()).thenReturn(List.of(rMine, rOther));
+        when(rigaRepository.searchFilteredWithData(
+                null,
+                user.getId(),
+                LocalDate.of(2025, 10, 10)))
+                .thenReturn(List.of(rMine));
+
         when(mapper.toDto(rMine)).thenReturn(dtoFrom(rMine));
 
         var out = service.filtra(null, 999L, "2025-10-10");
         assertThat(out).hasSize(1);
-        assertThat(out.get(0).getId()).isEqualTo(10L);
+        assertThat(out.getFirst().getId()).isEqualTo(10L);
+    }
+
+    @Test
+    void filtra_admin_withoutData_usesSearchFilteredWithoutData() {
+        authAsAdmin();
+
+        TimesheetRiga r1 = new TimesheetRiga();
+        r1.setId(20L);
+        r1.setTimesheet(tsUserAperto);
+        r1.setCliente(c1);
+
+        when(rigaRepository.searchFilteredWithoutData(c1.getId(), user.getId()))
+                .thenReturn(List.of(r1));
+        when(mapper.toDto(r1)).thenReturn(dtoFrom(r1));
+
+        var out = service.filtra(c1.getId(), user.getId(), null);
+
+        assertThat(out).hasSize(1);
+        assertThat(out.getFirst().getId()).isEqualTo(20L);
     }
 
     /* =========================== findByTimesheetId =========================== */
@@ -513,14 +561,14 @@ class TimesheetRigaServiceTest {
 
         var out = service.findByTimesheetId(tsUserAperto.getId());
         assertThat(out).hasSize(1);
-        assertThat(out.get(0).getId()).isEqualTo(80L);
+        assertThat(out.getFirst().getId()).isEqualTo(80L);
     }
 
     @Test
     void findByTimesheetId_hiddenForNotOwner() {
         authAsUser();
 
-        Timesheet tsOther = ts(8L, 10, 2025, admin, TimesheetStato.APERTO);
+        Timesheet tsOther = ts(8L, admin, TimesheetStato.APERTO);
         when(timesheetRepository.findById(tsOther.getId())).thenReturn(Optional.of(tsOther));
 
         assertThatThrownBy(() -> service.findByTimesheetId(tsOther.getId()))

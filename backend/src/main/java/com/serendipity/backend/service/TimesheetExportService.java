@@ -44,6 +44,9 @@ public class TimesheetExportService {
 
         var snap = assembler.build(id);
         byte[] pdf = renderer.render(snap);
+        if (pdf == null || pdf.length == 0) {
+            throw new IllegalStateException("Errore durante la generazione del PDF");
+        }
 
         String filename = buildFilename(ts);
         return new ExportFile(pdf, filename);
@@ -63,7 +66,7 @@ public class TimesheetExportService {
                 .getId();
     }
 
-    private Timesheet mustReadOwnedOrAdmin(Long id) {
+    private Timesheet mustReadOwnedOrAdmin(long id) {
         Timesheet ts = tsRepo.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Timesheet non trovato"));
 
@@ -86,7 +89,7 @@ public class TimesheetExportService {
 
         String normalized = Normalizer.normalize(base, Normalizer.Form.NFD)
                 .replaceAll("\\p{InCombiningDiacriticalMarks}+", "")
-                .replaceAll("[^a-z0-9_\\-\\.]", "");
+                .replaceAll("[^a-z0-9_\\-.]", "");
 
         return normalized + ".pdf";
     }

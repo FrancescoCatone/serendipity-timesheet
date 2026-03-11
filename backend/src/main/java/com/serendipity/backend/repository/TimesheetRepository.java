@@ -10,11 +10,6 @@ import java.util.List;
 
 @Repository
 public interface TimesheetRepository extends JpaRepository<Timesheet, Long> {
-    List<Timesheet> findByUtenteId(Long utenteId);
-
-    List<Timesheet> findByMeseAndAnno(int mese, int anno);
-
-    List<Timesheet> findByUtenteIdAndMeseAndAnno(Long utenteId, int mese, int anno);
 
     boolean existsByUtenteIdAndMeseAndAnno(Long utenteId, int mese, int anno);
 
@@ -37,4 +32,17 @@ public interface TimesheetRepository extends JpaRepository<Timesheet, Long> {
     List<Timesheet> searchFiltered(@Param("mese") Integer mese,
                                    @Param("anno") Integer anno,
                                    @Param("utenteId") Long utenteId);
+
+    @Query("select distinct t.anno from Timesheet t where t.utente.id = :utenteId order by t.anno desc")
+    List<Integer> findDistinctAnniByUtenteId(@Param("utenteId") Long utenteId);
+
+    @Query("""
+             select distinct t.mese
+             from Timesheet t
+             where t.anno = :anno
+               and t.utente.id = :utenteId
+             order by t.mese asc
+            """)
+    List<Integer> findDistinctMesiByAnnoAndUtenteId(@Param("anno") int anno,
+                                                    @Param("utenteId") Long utenteId);
 }

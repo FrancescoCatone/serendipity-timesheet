@@ -23,10 +23,7 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
-import java.time.YearMonth;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 @Service
 public class TimesheetService {
@@ -42,9 +39,6 @@ public class TimesheetService {
 
     @Autowired
     private TimesheetMapper mapper;
-
-    @Autowired
-    private CalendarioFestivitaService calendarioFestivitaService;
 
 
     /**
@@ -63,16 +57,16 @@ public class TimesheetService {
      *
      * @param dto Dati del timesheet da creare
      * @return TimesheetDto creato
+     * @throws AccessDeniedException           se l'utente non è autorizzato a creare un timesheet per l'utente specificato
      * @throws DataIntegrityViolationException se esiste già un timesheet per lo stesso utente, mese e anno
-     * @throws EntityNotFoundException         se l'utente specificato non esiste
      */
     public TimesheetDto create(CreaTimesheetDto dto) {
         ensureSelfOrAdmin(dto.getUtenteId());
 
         if (timesheetRepository.existsByUtenteIdAndMeseAndAnno(dto.getUtenteId(), dto.getMese(), dto.getAnno())) {
             throw new DataIntegrityViolationException(
-                    String.format("Esiste già un timesheet per l'utente %d nel %02d/%d",
-                            dto.getUtenteId(), dto.getMese(), dto.getAnno())
+                    String.format("Esiste già un timesheet per l’utente selezionato nel periodo %02d/%d",
+                            dto.getMese(), dto.getAnno())
             );
         }
 
@@ -92,12 +86,11 @@ public class TimesheetService {
      * Aggiorna un timesheet esistente.
      *
      * @param id  ID del timesheet da aggiornare
-     * @param dto Dati aggiornati del timesheet
+     * @param dto Dati del timesheet aggiornati
      * @return TimesheetDto aggiornato
-     * @throws EntityNotFoundException         se il timesheet o l'utente specificato non esistono, o se l'utente non è autorizzato
-     * @throws AccessDeniedException           se un utente non ADMIN tenta di assegnare il timesheet a un altro utente
-     * @throws IllegalStateException           se si tenta di modificare un timesheet CHIUSO o CONFERMATO (senza essere ADMIN)
-     * @throws DataIntegrityViolationException se esiste già un timesheet per lo stesso utente, mese e anno (diverso dall'originale)
+     * @throws EntityNotFoundException         se il timesheet non esiste o l'utente non è autorizzato
+     * @throws DataIntegrityViolationException se esiste già un timesheet per lo stesso utente, mese e anno
+     * @throws IllegalStateException           se il timesheet è in uno stato che non consente modifiche
      */
     public TimesheetDto update(Long id, CreaTimesheetDto dto) {
         Timesheet entity = mustReadOwnedOrAdmin(id);
@@ -108,12 +101,8 @@ public class TimesheetService {
             throw new AccessDeniedException("Non puoi assegnare il timesheet a un altro utente");
         }
 
-        if (entity.getStato() == TimesheetStato.CHIUSO) {
-            throw new AccessDeniedException("Timesheet CHIUSO: impossibile modificare");
-        }
-
-        if (entity.getStato() == TimesheetStato.CONFERMATO && !isAdmin) {
-            throw new IllegalStateException("Timesheet CONFERMATO: riaprire (→ APERTO) prima di modificare");
+        if (entity.getStato() == TimesheetStato.CONFERMATO || entity.getStato() == TimesheetStato.CHIUSO) {
+            throw new IllegalStateException("Timesheet non modificabile nello stato attuale");
         }
 
         if (!entity.getUtente().getId().equals(dto.getUtenteId())
@@ -128,8 +117,8 @@ public class TimesheetService {
 
             if (exists) {
                 throw new DataIntegrityViolationException(
-                        String.format("Esiste già un timesheet per l'utente %d nel %02d/%d",
-                                dto.getUtenteId(), dto.getMese(), dto.getAnno())
+                        String.format("Esiste già un timesheet per l’utente selezionato nel periodo %02d/%d",
+                                dto.getMese(), dto.getAnno())
                 );
             }
         }
@@ -148,15 +137,13 @@ public class TimesheetService {
      * Elimina un timesheet.
      *
      * @param id ID del timesheet da eliminare
-     * @throws EntityNotFoundException se il timesheet non esiste
+     * @throws EntityNotFoundException se il timesheet non esiste o l'utente non è autorizzato
      */
     public void delete(Long id) {
-        if (!timesheetRepository.existsById(id)) {
-            throw new EntityNotFoundException("Timesheet non trovato con ID: " + id);
-        }
-        timesheetRepository.deleteById(id);
+        Timesheet ts = timesheetRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Timesheet non trovato con ID: " + id));
+        timesheetRepository.delete(ts);
     }
-
 
     /**
      * Cerca timesheet filtrati per mese, anno e utente.
@@ -191,22 +178,32 @@ public class TimesheetService {
     }
 
     /**
-     * Restituisce gli anni distinti per cui esistono timesheet.
+     * Restituisce la lista degli anni per cui esistono timesheet.
+     * Gli utenti con ruolo ADMIN vedono gli anni di tutti i timesheet, mentre gli utenti con ruolo DIPENDENTE vedono solo gli anni dei propri timesheet.
      *
      * @return Lista di anni disponibili
      */
     public List<Integer> anniDisponibili() {
-        return timesheetRepository.findDistinctAnni();
+        if (currentUserIsAdmin()) {
+            return timesheetRepository.findDistinctAnni();
+        }
+
+        return timesheetRepository.findDistinctAnniByUtenteId(getCurrentUserId());
     }
 
     /**
-     * Restituisce i mesi distinti per un dato anno in cui esistono timesheet.
+     * Restituisce la lista dei mesi per un dato anno per cui esistono timesheet.
+     * Gli utenti con ruolo ADMIN vedono i mesi di tutti i timesheet, mentre gli utenti con ruolo DIPENDENTE vedono solo i mesi dei propri timesheet.
      *
-     * @param anno Anno per cui cercare i mesi
+     * @param anno Anno per cui recuperare i mesi
      * @return Lista di mesi disponibili per l'anno specificato
      */
     public List<Integer> mesiDisponibiliPerAnno(int anno) {
-        return timesheetRepository.findDistinctMesiByAnno(anno);
+        if (currentUserIsAdmin()) {
+            return timesheetRepository.findDistinctMesiByAnno(anno);
+        }
+
+        return timesheetRepository.findDistinctMesiByAnnoAndUtenteId(anno, getCurrentUserId());
     }
 
     /**
@@ -362,36 +359,6 @@ public class TimesheetService {
         return utenteRepository.findByEmail(email)
                 .orElseThrow(() -> new EntityNotFoundException("Utente corrente non trovato"))
                 .getId();
-    }
-
-    /**
-     * Verifica se un timesheet è completo, ovvero se ha una riga compilata per ogni giorno lavorativo del mese (escludendo festivi).
-     *
-     * @param timesheetId ID del timesheet da verificare
-     * @param mese        Mese di riferimento (1-12)
-     * @param anno        Anno di riferimento (es. 2023)
-     * @return true se il timesheet è completo, false altrimenti
-     */
-    private boolean isCompleto(Long timesheetId, int mese, int anno) {
-        List<LocalDate> date = rigaRepository.findDistinctDateByTimesheetId(timesheetId);
-        Set<LocalDate> compilate = new HashSet<>(date);
-
-        YearMonth ym = YearMonth.of(anno, mese);
-        int giorniNelMese = ym.lengthOfMonth();
-
-        for (int giorno = 1; giorno <= giorniNelMese; giorno++) {
-            LocalDate current = LocalDate.of(anno, mese, giorno);
-
-            if (calendarioFestivitaService.isFestivo(current)) {
-                continue;
-            }
-
-            if (!compilate.contains(current)) {
-                return false;
-            }
-        }
-
-        return true;
     }
 
     /**

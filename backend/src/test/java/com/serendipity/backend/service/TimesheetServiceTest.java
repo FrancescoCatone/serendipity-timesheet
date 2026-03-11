@@ -25,7 +25,6 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.time.LocalDate;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -50,8 +49,6 @@ class TimesheetServiceTest {
     private TimesheetRigaRepository rigaRepository;
     @Mock
     private TimesheetMapper mapper;
-    @Mock
-    private CalendarioFestivitaService calendarioFestivitaService;
 
     private Utente admin;
     private Utente user;
@@ -279,7 +276,7 @@ class TimesheetServiceTest {
     }
 
     @Test
-    void update_forbidden_whenClosed() {
+    void update_illegal_whenClosed() {
         authAsAdmin();
         var existing = ts(1L, 9, user, TimesheetStato.CHIUSO);
         when(timesheetRepository.findById(1L)).thenReturn(Optional.of(existing));
@@ -290,7 +287,8 @@ class TimesheetServiceTest {
         dto.setAnno(2025);
 
         assertThatThrownBy(() -> service.update(1L, dto))
-                .isInstanceOf(AccessDeniedException.class);
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("non modificabile");
     }
 
     @Test
@@ -308,7 +306,7 @@ class TimesheetServiceTest {
 
         assertThatThrownBy(() -> service.update(1L, dto))
                 .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("CONFERMATO");
+                .hasMessageContaining("non modificabile");
     }
 
     @Test
@@ -332,15 +330,18 @@ class TimesheetServiceTest {
     @Test
     void delete_ok() {
         authAsAdmin();
-        when(timesheetRepository.existsById(1L)).thenReturn(true);
+        var t = ts(1L, 10, user, TimesheetStato.APERTO);
+        when(timesheetRepository.findById(1L)).thenReturn(Optional.of(t));
         service.delete(1L);
-        verify(timesheetRepository).deleteById(1L);
+
+        verify(timesheetRepository).delete(t);
     }
 
     @Test
     void delete_notFound() {
         authAsAdmin();
-        when(timesheetRepository.existsById(1L)).thenReturn(false);
+        when(timesheetRepository.findById(1L)).thenReturn(Optional.empty());
+
         assertThatThrownBy(() -> service.delete(1L))
                 .isInstanceOf(EntityNotFoundException.class);
     }
@@ -397,7 +398,7 @@ class TimesheetServiceTest {
 
         var res = service.search(10, 2025, 999L /* ignorato per non-admin */);
         assertThat(res).hasSize(1);
-        assertThat(res.get(0).utenteId()).isEqualTo(200L);
+        assertThat(res.getFirst().utenteId()).isEqualTo(200L);
     }
 
     @Test
@@ -411,15 +412,39 @@ class TimesheetServiceTest {
     // anni/mesi disponibili ---------------------------------------------------
 
     @Test
-    void anniDisponibili_ok() {
+    void anniDisponibili_admin_ok() {
+        authAsAdmin();
         when(timesheetRepository.findDistinctAnni()).thenReturn(List.of(2025, 2024));
+
         assertThat(service.anniDisponibili()).containsExactly(2025, 2024);
     }
 
     @Test
-    void mesiDisponibiliPerAnno_ok() {
+    void anniDisponibili_user_onlyOwn() {
+        authAsUser();
+        stubCurrentUserLookupAsUser();
+
+        when(timesheetRepository.findDistinctAnniByUtenteId(200L)).thenReturn(List.of(2025));
+
+        assertThat(service.anniDisponibili()).containsExactly(2025);
+    }
+
+    @Test
+    void mesiDisponibiliPerAnno_admin_ok() {
+        authAsAdmin();
         when(timesheetRepository.findDistinctMesiByAnno(2025)).thenReturn(List.of(9, 10));
+
         assertThat(service.mesiDisponibiliPerAnno(2025)).containsExactly(9, 10);
+    }
+
+    @Test
+    void mesiDisponibiliPerAnno_user_onlyOwn() {
+        authAsUser();
+        stubCurrentUserLookupAsUser();
+
+        when(timesheetRepository.findDistinctMesiByAnnoAndUtenteId(2025, 200L)).thenReturn(List.of(10));
+
+        assertThat(service.mesiDisponibiliPerAnno(2025)).containsExactly(10);
     }
 
     // findAllFiltered ---------------------------------------------------------
@@ -451,7 +476,7 @@ class TimesheetServiceTest {
 
         var res = service.findAllFiltered();
         assertThat(res).hasSize(1);
-        assertThat(res.get(0).utenteId()).isEqualTo(200L);
+        assertThat(res.getFirst().utenteId()).isEqualTo(200L);
     }
 
     // conferma ----------------------------------------------------------------
@@ -483,6 +508,23 @@ class TimesheetServiceTest {
         assertThatThrownBy(() -> service.conferma(1L))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("APERTO");
+    }
+
+    @Test
+    void update_illegal_whenConfirmed_evenForAdmin() {
+        authAsAdmin();
+
+        var existing = ts(1L, 9, user, TimesheetStato.CONFERMATO);
+        when(timesheetRepository.findById(1L)).thenReturn(Optional.of(existing));
+
+        CreaTimesheetDto dto = new CreaTimesheetDto();
+        dto.setUtenteId(200L);
+        dto.setMese(9);
+        dto.setAnno(2025);
+
+        assertThatThrownBy(() -> service.update(1L, dto))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("non modificabile");
     }
 
 

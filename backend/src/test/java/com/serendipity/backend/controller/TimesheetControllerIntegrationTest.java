@@ -167,11 +167,24 @@ public class TimesheetControllerIntegrationTest {
                 .andExpect(jsonPath("$.data.id").value(ts.getId().intValue()));
     }
 
+    @Test
+    @WithMockUser(username = "user@serendipity.com", roles = "DIPENDENTE")
+    void getById_asDipendente_otherTimesheet_notFound() throws Exception {
+        Timesheet ts = new Timesheet();
+        ts.setAnno(2025);
+        ts.setMese(7);
+        ts.setUtente(admin);
+        ts = timesheetRepository.save(ts);
+
+        mockMvc.perform(get("/api/timesheets/{id}", ts.getId()))
+                .andExpect(status().isNotFound());
+    }
+
     /* ======================= PUT /api/timesheets/{id} ======================= */
 
     @Test
     @WithMockUser(username = "admin@serendipity.com", roles = "ADMIN")
-    void update_forbiddenWhenChiuso() throws Exception {
+    void update_conflictWhenChiuso() throws Exception {
         Timesheet ts = new Timesheet();
         ts.setAnno(2025);
         ts.setMese(1);
@@ -184,8 +197,8 @@ public class TimesheetControllerIntegrationTest {
         mockMvc.perform(put("/api/timesheets/{id}", ts.getId())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(dto)))
-                .andExpect(status().isForbidden()) // AccessDeniedException -> 403
-                .andExpect(jsonPath("$.message").value("Timesheet CHIUSO: impossibile modificare"));
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value("Timesheet non modificabile nello stato attuale"));
     }
 
     @Test
@@ -228,6 +241,25 @@ public class TimesheetControllerIntegrationTest {
                 .andExpect(jsonPath("$.data.stato").value("CONFERMATO"));
     }
 
+    @Test
+    @WithMockUser(username = "admin@serendipity.com", roles = "ADMIN")
+    void update_conflictWhenConfermato() throws Exception {
+        Timesheet ts = new Timesheet();
+        ts.setAnno(2025);
+        ts.setMese(1);
+        ts.setUtente(dipendente);
+        ts.setStato(TimesheetStato.CONFERMATO);
+        ts = timesheetRepository.save(ts);
+
+        CreaTimesheetDto dto = buildTsDto(2, 2025, dipendente.getId());
+
+        mockMvc.perform(put("/api/timesheets/{id}", ts.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(dto)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value("Timesheet non modificabile nello stato attuale"));
+    }
+
 
     /* ======================= DELETE /api/timesheets/{id} ======================= */
 
@@ -243,6 +275,19 @@ public class TimesheetControllerIntegrationTest {
         mockMvc.perform(delete("/api/timesheets/{id}", ts.getId()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").value("Timesheet eliminato"));
+    }
+
+    @Test
+    @WithMockUser(username = "user@serendipity.com", roles = "DIPENDENTE")
+    void delete_asDipendente_forbidden() throws Exception {
+        Timesheet ts = new Timesheet();
+        ts.setAnno(2025);
+        ts.setMese(3);
+        ts.setUtente(dipendente);
+        ts = timesheetRepository.save(ts);
+
+        mockMvc.perform(delete("/api/timesheets/{id}", ts.getId()))
+                .andExpect(status().isForbidden());
     }
 
     /* ======================= GET /api/timesheets/search ======================= */
@@ -283,7 +328,7 @@ public class TimesheetControllerIntegrationTest {
         });
         List<Map<String, Object>> dataUser = (List<Map<String, Object>>) onlyUserMap.get("data");
         assertThat(dataUser).hasSize(1);
-        assertThat(((Integer) dataUser.get(0).get("utenteId")).longValue()).isEqualTo(dipendente.getId());
+        assertThat(((Integer) dataUser.getFirst().get("utenteId")).longValue()).isEqualTo(dipendente.getId());
     }
 
     @Test
@@ -309,7 +354,7 @@ public class TimesheetControllerIntegrationTest {
         });
         List<Map<String, Object>> data = (List<Map<String, Object>>) map.get("data");
         assertThat(data).hasSize(1);
-        assertThat(((Integer) data.get(0).get("utenteId")).longValue()).isEqualTo(dipendente.getId());
+        assertThat(((Integer) data.getFirst().get("utenteId")).longValue()).isEqualTo(dipendente.getId());
     }
 
     /* ======================= GET /api/timesheets/anni & /mesi ======================= */
@@ -340,6 +385,60 @@ public class TimesheetControllerIntegrationTest {
         mockMvc.perform(get("/api/timesheets/mesi").param("anno", "2025"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data").value(org.hamcrest.Matchers.hasItems(1, 2)));
+    }
+
+    @Test
+    @WithMockUser(username = "user@serendipity.com", roles = "DIPENDENTE")
+    void anni_asDipendente_onlyOwn() throws Exception {
+        Timesheet mine1 = new Timesheet();
+        mine1.setAnno(2025);
+        mine1.setMese(1);
+        mine1.setUtente(dipendente);
+        timesheetRepository.save(mine1);
+
+        Timesheet mine2 = new Timesheet();
+        mine2.setAnno(2026);
+        mine2.setMese(2);
+        mine2.setUtente(dipendente);
+        timesheetRepository.save(mine2);
+
+        Timesheet other = new Timesheet();
+        other.setAnno(2024);
+        other.setMese(3);
+        other.setUtente(admin);
+        timesheetRepository.save(other);
+
+        mockMvc.perform(get("/api/timesheets/anni"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data").value(org.hamcrest.Matchers.hasItems(2026, 2025)))
+                .andExpect(jsonPath("$.data").value(org.hamcrest.Matchers.not(org.hamcrest.Matchers.hasItem(2024))));
+    }
+
+    @Test
+    @WithMockUser(username = "user@serendipity.com", roles = "DIPENDENTE")
+    void mesi_asDipendente_onlyOwn() throws Exception {
+        Timesheet mine1 = new Timesheet();
+        mine1.setAnno(2025);
+        mine1.setMese(3);
+        mine1.setUtente(dipendente);
+        timesheetRepository.save(mine1);
+
+        Timesheet mine2 = new Timesheet();
+        mine2.setAnno(2025);
+        mine2.setMese(5);
+        mine2.setUtente(dipendente);
+        timesheetRepository.save(mine2);
+
+        Timesheet other = new Timesheet();
+        other.setAnno(2025);
+        other.setMese(9);
+        other.setUtente(admin);
+        timesheetRepository.save(other);
+
+        mockMvc.perform(get("/api/timesheets/mesi").param("anno", "2025"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data").value(org.hamcrest.Matchers.hasItems(3, 5)))
+                .andExpect(jsonPath("$.data").value(org.hamcrest.Matchers.not(org.hamcrest.Matchers.hasItem(9))));
     }
 
     /* ======================= Stato: conferma / riapri / chiudi ======================= */

@@ -10,7 +10,6 @@ import java.util.List;
 
 @Repository
 public interface ClienteRepository extends JpaRepository<Cliente, Long> {
-    Cliente findByNome(String nome);
 
     boolean existsByNomeIgnoreCase(String nome);
 

@@ -7,7 +7,7 @@ import com.serendipity.backend.model.entity.Timesheet;
 import com.serendipity.backend.model.entity.Utente;
 import com.serendipity.backend.model.enums.TimesheetStato;
 import com.serendipity.backend.repository.TimesheetRepository;
-import com.serendipity.backend.repository.TimesheetRigaRepository;
+import com.serendipity.backend.repository.UtenteRepository;
 import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -37,13 +37,13 @@ class TimesheetExportServiceTest {
     private TimesheetRepository tsRepo;
 
     @Mock
-    private TimesheetRigaRepository rigaRepo;
-
-    @Mock
     private TimesheetSnapshotAssembler assembler;
 
     @Mock
     private PdfRenderer renderer;
+
+    @Mock
+    private UtenteRepository utenteRepository;
 
     @InjectMocks
     private TimesheetExportService service;
@@ -180,4 +180,102 @@ class TimesheetExportServiceTest {
         verify(assembler).build(id);
         verify(renderer).render(snap);
     }
+
+    @Test
+    void export_ok_asUserOwner_closedTimesheet() {
+        Utente u = new Utente();
+        u.setId(200L);
+        u.setNome("Mario");
+        u.setCognome("Rossi");
+        u.setEmail("user@serendipity.com");
+
+        Timesheet ts = new Timesheet();
+        ts.setUtente(u);
+        ts.setMese(5);
+        ts.setAnno(2025);
+        ts.setStato(TimesheetStato.CHIUSO);
+
+        var auth = new UsernamePasswordAuthenticationToken(
+                "user@serendipity.com",
+                null,
+                List.of(new SimpleGrantedAuthority("ROLE_DIPENDENTE"))
+        );
+        SecurityContextHolder.getContext().setAuthentication(auth);
+
+        when(tsRepo.findById(1L)).thenReturn(Optional.of(ts));
+        when(utenteRepository.findByEmail("user@serendipity.com")).thenReturn(Optional.of(u));
+
+        var snap = dummySnapshot("maggio");
+        when(assembler.build(1L)).thenReturn(snap);
+
+        byte[] pdf = new byte[]{1, 2, 3};
+        when(renderer.render(snap)).thenReturn(pdf);
+
+        TimesheetExportService.ExportFile out = service.export(1L);
+
+        assertThat(out.filename()).isEqualTo("mario_rossi_maggio_2025.pdf");
+        assertThat(out.content()).isEqualTo(pdf);
+    }
+
+    @Test
+    void export_notOwner_asUser_throwsEntityNotFound() {
+        Utente owner = new Utente();
+        owner.setId(999L);
+        owner.setNome("Admin");
+        owner.setCognome("Test");
+        owner.setEmail("admin@serendipity.com");
+
+        Utente currentUser = new Utente();
+        currentUser.setId(200L);
+        currentUser.setNome("Mario");
+        currentUser.setCognome("Rossi");
+        currentUser.setEmail("user@serendipity.com");
+
+        Timesheet ts = new Timesheet();
+        ts.setUtente(owner);
+        ts.setMese(5);
+        ts.setAnno(2025);
+        ts.setStato(TimesheetStato.CHIUSO);
+
+        var auth = new UsernamePasswordAuthenticationToken(
+                "user@serendipity.com",
+                null,
+                List.of(new SimpleGrantedAuthority("ROLE_DIPENDENTE"))
+        );
+        SecurityContextHolder.getContext().setAuthentication(auth);
+
+        when(tsRepo.findById(1L)).thenReturn(Optional.of(ts));
+        when(utenteRepository.findByEmail("user@serendipity.com")).thenReturn(Optional.of(currentUser));
+
+        assertThrows(EntityNotFoundException.class, () -> service.export(1L));
+
+        verifyNoInteractions(assembler, renderer);
+    }
+
+    @Test
+    void export_rendererReturnsNull_throwsIllegalState() {
+        long id = 3L;
+        Timesheet ts = tsChiuso("Mario", "Rossi", 5);
+        when(tsRepo.findById(id)).thenReturn(Optional.of(ts));
+
+        var snap = dummySnapshot("maggio");
+        when(assembler.build(id)).thenReturn(snap);
+        when(renderer.render(snap)).thenReturn(null);
+
+        assertThrows(IllegalStateException.class, () -> service.export(id));
+    }
+
+    @Test
+    void export_rendererReturnsEmptyBytes_throwsIllegalState() {
+        long id = 4L;
+        Timesheet ts = tsChiuso("Mario", "Rossi", 5);
+        when(tsRepo.findById(id)).thenReturn(Optional.of(ts));
+
+        var snap = dummySnapshot("maggio");
+        when(assembler.build(id)).thenReturn(snap);
+        when(renderer.render(snap)).thenReturn(new byte[0]);
+
+        assertThrows(IllegalStateException.class, () -> service.export(id));
+    }
+
 }

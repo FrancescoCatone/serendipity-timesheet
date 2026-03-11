@@ -41,13 +41,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Transactional
 class ClienteControllerIntegrationTest {
 
-
     @Autowired
     private UtenteRepository utenteRepository;
+
     @Autowired
     private TimesheetRepository timesheetRepository;
+
     @Autowired
     private TimesheetRigaRepository rigaRepository;
+
     @Autowired
     private PasswordEncoder passwordEncoder;
 
@@ -139,8 +141,10 @@ class ClienteControllerIntegrationTest {
     @DisplayName("GET /api/clienti - OK con lista popolata")
     @WithMockUser(username = "admin", roles = {"ADMIN"})
     void getAll_ok_list() throws Exception {
-        // isolo il test: svuoto e ricreo due clienti noti
+        rigaRepository.deleteAll();
+        timesheetRepository.deleteAll();
         clienteRepository.deleteAll();
+
         persistCliente("Acme S.p.A.", 45.0);
         persistCliente("Globex SRL", 55.0);
 
@@ -157,6 +161,8 @@ class ClienteControllerIntegrationTest {
     @DisplayName("GET /api/clienti - OK con lista vuota")
     @WithMockUser(username = "admin", roles = {"ADMIN"})
     void getAll_ok_empty() throws Exception {
+        rigaRepository.deleteAll();
+        timesheetRepository.deleteAll();
         clienteRepository.deleteAll();
 
         mockMvc.perform(get("/api/clienti"))
@@ -165,8 +171,6 @@ class ClienteControllerIntegrationTest {
                 .andExpect(jsonPath("$.message").value("Lista clienti"))
                 .andExpect(jsonPath("$.data", hasSize(0)));
     }
-
-
 
     // -----------------------
     // GET /api/clienti/{id}

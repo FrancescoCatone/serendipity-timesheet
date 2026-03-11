@@ -177,7 +177,8 @@ public class TimesheetRigaControllerIntegrationTest {
 
         Map<String, Object> body = objectMapper.readValue(
                 res.getResponse().getContentAsString(),
-                new com.fasterxml.jackson.core.type.TypeReference<>() {}
+                new com.fasterxml.jackson.core.type.TypeReference<>() {
+                }
         );
         @SuppressWarnings("unchecked")
         java.util.List<java.util.Map<String, Object>> data =
@@ -225,7 +226,7 @@ public class TimesheetRigaControllerIntegrationTest {
         });
         List<Map<String, Object>> data = (List<Map<String, Object>>) body.get("data");
         assertThat(data).hasSize(1);
-        assertThat(((Integer) data.get(0).get("timesheetId")).longValue()).isEqualTo(tsUserAperto.getId());
+        assertThat(((Integer) data.getFirst().get("timesheetId")).longValue()).isEqualTo(tsUserAperto.getId());
     }
 
     /* ===================== GET /api/timesheet-righe/{id} ===================== */
@@ -286,7 +287,7 @@ public class TimesheetRigaControllerIntegrationTest {
 
     @Test
     @WithMockUser(username = "user@serendipity.com", roles = "DIPENDENTE")
-    void create_forbidden_onTsChiuso() throws Exception {
+    void create_conflict_onTsChiuso() throws Exception {
         CreaTimesheetRigaDto dto = buildRigaDto(
                 tsUserChiuso.getId(), clienteA.getId(),
                 LocalDate.of(2025, 8, 6), 1, 0);
@@ -294,13 +295,13 @@ public class TimesheetRigaControllerIntegrationTest {
         mockMvc.perform(post("/api/timesheet-righe")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(dto)))
-                .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.message").value("Timesheet CHIUSO: non modificabile"));
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value("Timesheet non modificabile nello stato attuale"));
     }
 
     @Test
     @WithMockUser(username = "user@serendipity.com", roles = "DIPENDENTE")
-    void create_illegal_onTsConfermato_asUser() throws Exception {
+    void create_conflict_onTsConfermato_asUser() throws Exception {
         CreaTimesheetRigaDto dto = buildRigaDto(
                 tsUserConfermato.getId(), clienteA.getId(),
                 LocalDate.of(2025, 9, 7), 0, 45);
@@ -309,12 +310,12 @@ public class TimesheetRigaControllerIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(dto)))
                 .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.message").value("Timesheet CONFERMATO: riaprire (→ APERTO) prima di modificare"));
+                .andExpect(jsonPath("$.message").value("Timesheet non modificabile nello stato attuale"));
     }
 
     @Test
     @WithMockUser(username = "admin@serendipity.com", roles = "ADMIN")
-    void create_ok_onTsConfermato_asAdmin() throws Exception {
+    void create_conflict_onTsConfermato_asAdmin() throws Exception {
         CreaTimesheetRigaDto dto = buildRigaDto(
                 tsUserConfermato.getId(), clienteB.getId(),
                 LocalDate.of(2025, 9, 8), 2, 0);
@@ -322,9 +323,8 @@ public class TimesheetRigaControllerIntegrationTest {
         mockMvc.perform(post("/api/timesheet-righe")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(dto)))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.message").value("Riga creata"))
-                .andExpect(jsonPath("$.data.clienteId").value(clienteB.getId().intValue()));
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value("Timesheet non modificabile nello stato attuale"));
     }
 
     @Test
@@ -398,7 +398,7 @@ public class TimesheetRigaControllerIntegrationTest {
 
     @Test
     @WithMockUser(username = "user@serendipity.com", roles = "DIPENDENTE")
-    void update_illegal_onConfermato_asUser() throws Exception {
+    void update_conflict_onConfermato_asUser() throws Exception {
         TimesheetRiga r = new TimesheetRiga();
         r.setTimesheet(tsUserConfermato);
         r.setCliente(clienteA);
@@ -413,7 +413,27 @@ public class TimesheetRigaControllerIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(dto)))
                 .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.message").value("Timesheet CONFERMATO: riaprire (→ APERTO) prima di modificare"));
+                .andExpect(jsonPath("$.message").value("Timesheet non modificabile nello stato attuale"));
+    }
+
+    @Test
+    @WithMockUser(username = "admin@serendipity.com", roles = "ADMIN")
+    void update_conflict_onConfermato_asAdmin() throws Exception {
+        TimesheetRiga r = new TimesheetRiga();
+        r.setTimesheet(tsUserConfermato);
+        r.setCliente(clienteA);
+        r.setData(LocalDate.of(2025, 9, 20));
+        r = rigaRepository.save(r);
+
+        CreaTimesheetRigaDto dto = buildRigaDto(
+                tsUserConfermato.getId(), clienteA.getId(),
+                LocalDate.of(2025, 9, 20), 2, 0);
+
+        mockMvc.perform(put("/api/timesheet-righe/{id}", r.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(dto)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value("Timesheet non modificabile nello stato attuale"));
     }
 
     /* ===================== DELETE /api/timesheet-righe/{id} ===================== */
@@ -434,7 +454,7 @@ public class TimesheetRigaControllerIntegrationTest {
 
     @Test
     @WithMockUser(username = "user@serendipity.com", roles = "DIPENDENTE")
-    void delete_forbidden_onChiuso() throws Exception {
+    void delete_conflict_onChiuso() throws Exception {
         TimesheetRiga r = new TimesheetRiga();
         r.setTimesheet(tsUserChiuso);
         r.setCliente(clienteA);
@@ -442,8 +462,22 @@ public class TimesheetRigaControllerIntegrationTest {
         r = rigaRepository.save(r);
 
         mockMvc.perform(delete("/api/timesheet-righe/{id}", r.getId()))
-                .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.message").value("Timesheet CHIUSO: non modificabile"));
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value("Timesheet non modificabile nello stato attuale"));
+    }
+
+    @Test
+    @WithMockUser(username = "user@serendipity.com", roles = "DIPENDENTE")
+    void delete_conflict_onConfermato() throws Exception {
+        TimesheetRiga r = new TimesheetRiga();
+        r.setTimesheet(tsUserConfermato);
+        r.setCliente(clienteA);
+        r.setData(LocalDate.of(2025, 9, 21));
+        r = rigaRepository.save(r);
+
+        mockMvc.perform(delete("/api/timesheet-righe/{id}", r.getId()))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value("Timesheet non modificabile nello stato attuale"));
     }
 
     /* ===================== GET /api/timesheet-righe/filter ===================== */

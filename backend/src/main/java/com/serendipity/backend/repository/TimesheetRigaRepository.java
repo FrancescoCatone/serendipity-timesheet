@@ -13,12 +13,6 @@ import java.util.List;
 
 @Repository
 public interface TimesheetRigaRepository extends JpaRepository<TimesheetRiga, Long> {
-    List<TimesheetRiga> findByTimesheetId(Long timesheetId);
-
-    @Query("select distinct tr.data " +
-            "from TimesheetRiga tr " +
-            "where tr.timesheet.id = :timesheetId")
-    List<LocalDate> findDistinctDateByTimesheetId(@Param("timesheetId") Long timesheetId);
 
     @Query("""
             select new com.serendipity.backend.model.dto.TotaliDto(
@@ -51,5 +45,36 @@ public interface TimesheetRigaRepository extends JpaRepository<TimesheetRiga, Lo
             order by r.data asc, r.cliente.nome asc, r.id asc
             """)
     List<TimesheetRiga> findByTimesheetIdOrdered(@Param("timesheetId") Long timesheetId);
+
+    List<TimesheetRiga> findByTimesheetUtenteId(Long utenteId);
+
+    @Query("""
+             select r
+             from TimesheetRiga r
+             where (:clienteId is null or r.cliente.id = :clienteId)
+               and (:utenteId is null or r.timesheet.utente.id = :utenteId)
+             order by r.data asc, r.cliente.nome asc, r.id asc
+            """)
+    List<TimesheetRiga> searchFilteredWithoutData(@Param("clienteId") Long clienteId,
+                                                  @Param("utenteId") Long utenteId);
+
+    @Query("""
+             select r
+             from TimesheetRiga r
+             where (:clienteId is null or r.cliente.id = :clienteId)
+               and (:utenteId is null or r.timesheet.utente.id = :utenteId)
+               and r.data = :data
+             order by r.data asc, r.cliente.nome asc, r.id asc
+            """)
+    List<TimesheetRiga> searchFilteredWithData(@Param("clienteId") Long clienteId,
+                                               @Param("utenteId") Long utenteId,
+                                               @Param("data") LocalDate data);
+
+    @Query("""
+            select r
+            from TimesheetRiga r
+            order by r.data asc, r.cliente.nome asc, r.id asc
+            """)
+    List<TimesheetRiga> findAllOrdered();
 
 }

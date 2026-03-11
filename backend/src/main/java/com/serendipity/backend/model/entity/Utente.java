@@ -3,9 +3,6 @@ package com.serendipity.backend.model.entity;
 import com.serendipity.backend.model.enums.Ruolo;
 import jakarta.persistence.*;
 
-import java.util.ArrayList;
-import java.util.List;
-
 @Entity
 public class Utente {
 
@@ -26,9 +23,6 @@ public class Utente {
 
     @Enumerated(EnumType.STRING)
     private Ruolo ruolo;
-
-    @OneToMany(mappedBy = "utente", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<Timesheet> timesheets = new ArrayList<>();
 
     public Long getId() {
         return id;
@@ -86,18 +80,10 @@ public class Utente {
         this.codiceFiscale = codiceFiscale;
     }
 
-    public List<Timesheet> getTimesheets() {
-        return timesheets;
-    }
-
-    public void setTimesheets(List<Timesheet> timesheets) {
-        this.timesheets = timesheets;
-    }
-
     public Utente() {
     }
 
-    public Utente(Long id, String codiceFiscale, String nome, String cognome, String email, String password, Ruolo ruolo, List<Timesheet> timesheets) {
+    public Utente(Long id, String codiceFiscale, String nome, String cognome, String email, String password, Ruolo ruolo) {
         this.id = id;
         this.codiceFiscale = codiceFiscale;
         this.nome = nome;
@@ -105,6 +91,5 @@ public class Utente {
         this.email = email;
         this.password = password;
         this.ruolo = ruolo;
-        this.timesheets = timesheets;
     }
 }
