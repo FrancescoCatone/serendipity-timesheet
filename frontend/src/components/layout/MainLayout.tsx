@@ -7,12 +7,14 @@ const adminMenuItems = [
     { label: 'Utenti', path: '/app/utenti' },
     { label: 'Clienti', path: '/app/clienti' },
     { label: 'Timesheet', path: '/app/timesheet' },
+    { label: 'Report', path: '/app/report' },
     { label: 'Profilo', path: '/app/profilo' },
 ];
 
 const dipendenteMenuItems = [
     { label: 'Dashboard', path: '/app/dashboard' },
     { label: 'Timesheet', path: '/app/timesheet' },
+    { label: 'Report', path: '/app/report' },
     { label: 'Profilo', path: '/app/profilo' },
 ];
 
