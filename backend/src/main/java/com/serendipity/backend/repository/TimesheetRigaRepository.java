@@ -2,6 +2,8 @@ package com.serendipity.backend.repository;
 
 import com.serendipity.backend.model.dto.TotaleClienteDto;
 import com.serendipity.backend.model.dto.TotaliDto;
+import com.serendipity.backend.model.dto.report.ReportClienteDipendenteDto;
+import com.serendipity.backend.model.dto.report.ReportDipendenteClienteDto;
 import com.serendipity.backend.model.entity.TimesheetRiga;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -76,5 +78,70 @@ public interface TimesheetRigaRepository extends JpaRepository<TimesheetRiga, Lo
             order by r.data asc, r.cliente.nome asc, r.id asc
             """)
     List<TimesheetRiga> findAllOrdered();
+
+    @Query("""
+            select new com.serendipity.backend.model.dto.report.ReportClienteDipendenteDto(
+                r.timesheet.utente.id,
+                r.timesheet.utente.nome,
+                r.timesheet.utente.cognome,
+                coalesce(sum(r.orario), 0),
+                coalesce(sum(r.costoOrario), 0)
+            )
+            from TimesheetRiga r
+            where r.cliente.id = :clienteId
+              and (:anno is null or r.timesheet.anno = :anno)
+              and (:mese is null or r.timesheet.mese = :mese)
+            group by r.timesheet.utente.id, r.timesheet.utente.nome, r.timesheet.utente.cognome
+            order by r.timesheet.utente.cognome asc, r.timesheet.utente.nome asc
+            """)
+    List<ReportClienteDipendenteDto> reportClientePerDipendente(@Param("clienteId") Long clienteId,
+                                                                @Param("mese") Integer mese,
+                                                                @Param("anno") Integer anno);
+
+    @Query("""
+            select new com.serendipity.backend.model.dto.TotaliDto(
+                coalesce(sum(r.orario), 0),
+                coalesce(sum(r.costoOrario), 0)
+            )
+            from TimesheetRiga r
+            where r.cliente.id = :clienteId
+              and (:anno is null or r.timesheet.anno = :anno)
+              and (:mese is null or r.timesheet.mese = :mese)
+            """)
+    TotaliDto totaleReportCliente(@Param("clienteId") Long clienteId,
+                                  @Param("mese") Integer mese,
+                                  @Param("anno") Integer anno);
+
+    @Query("""
+            select new com.serendipity.backend.model.dto.report.ReportDipendenteClienteDto(
+                r.cliente.id,
+                r.cliente.nome,
+                coalesce(sum(r.orario), 0),
+                coalesce(sum(r.costoOrario), 0)
+            )
+            from TimesheetRiga r
+            where r.timesheet.utente.id = :utenteId
+              and (:anno is null or r.timesheet.anno = :anno)
+              and (:mese is null or r.timesheet.mese = :mese)
+            group by r.cliente.id, r.cliente.nome
+            order by r.cliente.nome asc
+            """)
+    List<ReportDipendenteClienteDto> reportDipendentePerCliente(@Param("utenteId") Long utenteId,
+                                                                @Param("mese") Integer mese,
+                                                                @Param("anno") Integer anno);
+
+    @Query("""
+            select new com.serendipity.backend.model.dto.TotaliDto(
+                coalesce(sum(r.orario), 0),
+                coalesce(sum(r.costoOrario), 0)
+            )
+            from TimesheetRiga r
+            where r.timesheet.utente.id = :utenteId
+              and (:anno is null or r.timesheet.anno = :anno)
+              and (:mese is null or r.timesheet.mese = :mese)
+            """)
+    TotaliDto totaleReportDipendente(@Param("utenteId") Long utenteId,
+                                     @Param("mese") Integer mese,
+                                     @Param("anno") Integer anno);
 
 }

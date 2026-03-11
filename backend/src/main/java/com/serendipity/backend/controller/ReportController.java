@@ -1,0 +1,64 @@
+package com.serendipity.backend.controller;
+
+import com.serendipity.backend.model.dto.ResponseMessage;
+import com.serendipity.backend.model.dto.report.ReportClienteDto;
+import com.serendipity.backend.model.dto.report.ReportDipendenteDto;
+import com.serendipity.backend.service.ReportService;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@RequestMapping("/api/report")
+public class ReportController {
+
+    private final ReportService service;
+
+    public ReportController(ReportService service) {
+        this.service = service;
+    }
+
+    /**
+     * Genera il report aggregato per cliente.
+     * Solo ADMIN può consultarlo.
+     *
+     * @param clienteId ID del cliente
+     * @param mese      mese opzionale
+     * @param anno      anno opzionale
+     * @return report cliente con totali e dettaglio per dipendente
+     */
+    @PreAuthorize("hasRole('ADMIN')")
+    @GetMapping("/cliente")
+    public ResponseEntity<ResponseMessage> reportPerCliente(
+            @RequestParam Long clienteId,
+            @RequestParam(required = false) Integer mese,
+            @RequestParam(required = false) Integer anno
+    ) {
+        ReportClienteDto report = service.reportPerCliente(clienteId, mese, anno);
+        return ResponseEntity.ok(new ResponseMessage(200, "Report cliente generato", report));
+    }
+
+    /**
+     * Genera il report aggregato per dipendente.
+     * ADMIN può consultare qualsiasi dipendente.
+     * DIPENDENTE può consultare solo il proprio report.
+     *
+     * @param utenteId ID del dipendente
+     * @param mese     mese opzionale
+     * @param anno     anno opzionale
+     * @return report dipendente con totali e dettaglio per cliente
+     */
+    @PreAuthorize("hasAnyRole('ADMIN','DIPENDENTE')")
+    @GetMapping("/dipendente")
+    public ResponseEntity<ResponseMessage> reportPerDipendente(
+            @RequestParam Long utenteId,
+            @RequestParam(required = false) Integer mese,
+            @RequestParam(required = false) Integer anno
+    ) {
+        ReportDipendenteDto report = service.reportPerDipendente(utenteId, mese, anno);
+        return ResponseEntity.ok(new ResponseMessage(200, "Report dipendente generato", report));
+    }
+}
