@@ -128,6 +128,12 @@ button {
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
+.form-group input.input-error,
+.form-select.input-error {
+  border-color: #dc2626;
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.12);
+}
+
 .form-group input:focus {
   border-color: var(--color-primary);
   box-shadow: 0 0 0 3px rgba(235, 0, 245, 0.12);
@@ -836,4 +842,65 @@ button {
   background: #f8fafc;
   border: 1px solid #e2e8f0;
   font-weight: 700;
+}
+
+.timesheet-coverage-card {
+  margin-bottom: 1.5rem;
+  padding: 1.25rem;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(245, 247, 250, 0.96) 0%, rgba(255, 255, 255, 0.96) 100%);
+}
+
+.coverage-ok,
+.coverage-missing {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 0.9rem;
+  padding: 0.55rem 0.85rem;
+  border-radius: 999px;
+  font-weight: 600;
+}
+
+.coverage-ok {
+  background: rgba(22, 163, 74, 0.12);
+  color: #166534;
+}
+
+.coverage-missing {
+  background: rgba(234, 88, 12, 0.12);
+  color: #9a3412;
+}
+
+.coverage-date-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  margin-top: 0.95rem;
+}
+
+.coverage-date-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.45rem 0.75rem;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.08);
+  color: #0f172a;
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+.field-hint {
+  display: block;
+  margin-top: 0.45rem;
+  color: #475569;
+  font-size: 0.88rem;
+}
+
+.field-error {
+  display: block;
+  margin-top: 0.45rem;
+  color: #b91c1c;
+  font-size: 0.88rem;
+  font-weight: 600;
 }

@@ -25,12 +25,17 @@ type UserOption = {
     label: string;
 };
 
+const NON_LAVORATO_CLIENT_NAME = 'NON LAVORATO';
+
 type RigaFormState = {
     clienteId: string;
     data: string;
+    dataFine: string;
     ore: string;
     minuti: string;
 };
+
+type RigaFormErrors = Partial<Record<keyof RigaFormState, string>>;
 
 const MONTH_OPTIONS = [
     { value: 1, label: 'Gennaio' },
@@ -66,6 +71,37 @@ function formatDate(value: string): string {
 
 function formatCurrency(value: number): string {
     return `€ ${value.toFixed(2)}`;
+}
+
+function getMonthDates(mese: number, anno: number): string[] {
+    const daysInMonth = new Date(anno, mese, 0).getDate();
+
+    return Array.from({ length: daysInMonth }, (_, index) => {
+        const day = String(index + 1).padStart(2, '0');
+        return `${anno}-${String(mese).padStart(2, '0')}-${day}`;
+    });
+}
+
+function getDatesInRange(start: string, end: string): string[] {
+    const startDate = new Date(`${start}T00:00:00`);
+    const endDate = new Date(`${end}T00:00:00`);
+
+    if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime()) || startDate > endDate) {
+        return [];
+    }
+
+    const dates: string[] = [];
+    const current = new Date(startDate);
+
+    while (current <= endDate) {
+        const year = current.getFullYear();
+        const month = String(current.getMonth() + 1).padStart(2, '0');
+        const day = String(current.getDate()).padStart(2, '0');
+        dates.push(`${year}-${month}-${day}`);
+        current.setDate(current.getDate() + 1);
+    }
+
+    return dates;
 }
 
 function ModificaTimesheetPage() {
@@ -106,21 +142,48 @@ function ModificaTimesheetPage() {
     const [rigaForm, setRigaForm] = useState<RigaFormState>({
         clienteId: '',
         data: '',
+        dataFine: '',
         ore: '',
         minuti: '0',
     });
+    const [rigaFormErrors, setRigaFormErrors] = useState<RigaFormErrors>({});
 
     const isReadOnly = useMemo(() => {
         return form.stato === 'CONFERMATO' || form.stato === 'CHIUSO';
     }, [form.stato]);
 
+    const selectedCliente = useMemo(() => {
+        const selectedId = Number(rigaForm.clienteId);
+        if (!selectedId) {
+            return null;
+        }
+
+        return clienti.find((cliente) => cliente.id === selectedId) ?? null;
+    }, [clienti, rigaForm.clienteId]);
+
+    const isNonLavoratoSelected = selectedCliente?.nome?.toUpperCase() === NON_LAVORATO_CLIENT_NAME;
+
+    const missingRequiredDates = useMemo(() => {
+        if (!timesheetInfo) {
+            return [];
+        }
+
+        const compiledDates = new Set(righe.map((riga) => riga.data));
+
+        return getMonthDates(timesheetInfo.mese, timesheetInfo.anno)
+            .filter((date) => !isFestivoItaliano(date))
+            .filter((date) => !compiledDates.has(date));
+    }, [righe, timesheetInfo]);
+
     const resetRigaForm = useCallback((mese?: number, anno?: number) => {
         setRigaForm({
             clienteId: '',
             data: mese && anno ? buildDefaultRigaDate(mese, anno) : '',
+            dataFine: mese && anno ? buildDefaultRigaDate(mese, anno) : '',
             ore: '',
             minuti: '0',
         });
+        setRigaFormErrors({});
         setEditingRigaId(null);
     }, []);
 
@@ -245,9 +308,20 @@ function ModificaTimesheetPage() {
     ) => {
         const { name, value } = event.target;
 
+        const selectedClienteName = name === 'clienteId'
+            ? clienti.find((cliente) => String(cliente.id) === value)?.nome?.toUpperCase()
+            : null;
+
         setRigaForm((prev) => ({
             ...prev,
             [name]: value,
+            ...(selectedClienteName === NON_LAVORATO_CLIENT_NAME
+                ? { ore: '0', minuti: '0' }
+                : {}),
+        }));
+        setRigaFormErrors((prev) => ({
+            ...prev,
+            [name]: undefined,
         }));
     };
 
@@ -271,37 +345,90 @@ function ModificaTimesheetPage() {
         return null;
     };
 
-    const validateRigaForm = (): string | null => {
+    const validateRigaForm = (): { formError: string | null; fieldErrors: RigaFormErrors } => {
+        const fieldErrors: RigaFormErrors = {};
+
         if (!timesheetInfo) {
-            return 'Informazioni del timesheet non disponibili';
+            return {
+                formError: 'Informazioni del timesheet non disponibili',
+                fieldErrors,
+            };
         }
 
-        if (!rigaForm.clienteId || !rigaForm.data || rigaForm.ore === '' || rigaForm.minuti === '') {
-            return 'Compila tutti i campi della riga';
+        if (!rigaForm.clienteId) {
+            fieldErrors.clienteId = 'Seleziona un cliente';
+        }
+        if (!rigaForm.data) {
+            fieldErrors.data = editingRigaId !== null ? 'Seleziona una data' : 'Seleziona una data iniziale';
+        }
+        if (!editingRigaId && !rigaForm.dataFine) {
+            fieldErrors.dataFine = 'Seleziona una data finale';
+        }
+        if (rigaForm.ore === '') {
+            fieldErrors.ore = 'Inserisci le ore';
+        }
+        if (rigaForm.minuti === '') {
+            fieldErrors.minuti = 'Inserisci i minuti';
+        }
+
+        if (Object.keys(fieldErrors).length > 0) {
+            return {
+                formError: 'Controlla i campi evidenziati della riga',
+                fieldErrors,
+            };
         }
 
         const ore = Number(rigaForm.ore);
         const minuti = Number(rigaForm.minuti);
 
         if (Number.isNaN(ore) || !Number.isInteger(ore) || ore < 0) {
-            return 'Le ore devono essere un numero intero maggiore o uguale a 0';
+            fieldErrors.ore = 'Le ore devono essere un numero intero maggiore o uguale a 0';
         }
 
         if (Number.isNaN(minuti) || !Number.isInteger(minuti) || minuti < 0 || minuti > 59) {
-            return 'I minuti devono essere compresi tra 0 e 59';
+            fieldErrors.minuti = 'I minuti devono essere compresi tra 0 e 59';
         }
 
-        if (ore === 0 && minuti === 0) {
-            return 'Inserisci una durata maggiore di zero';
+        if (ore === 0 && minuti === 0 && !isNonLavoratoSelected) {
+            fieldErrors.ore = 'Inserisci una durata maggiore di zero';
         }
 
-        const [year, month] = rigaForm.data.split('-').map(Number);
-
-        if (year !== timesheetInfo.anno || month !== timesheetInfo.mese) {
-            return `La data della riga deve appartenere a ${getMonthLabel(timesheetInfo.mese)} ${timesheetInfo.anno}`;
+        if ((ore > 0 || minuti > 0) && isNonLavoratoSelected) {
+            fieldErrors.ore = 'Il cliente NON LAVORATO deve avere 0 ore e 0 minuti';
         }
 
-        return null;
+        const endDate = editingRigaId !== null ? rigaForm.data : rigaForm.dataFine;
+
+        if (!editingRigaId && rigaForm.data && endDate && endDate < rigaForm.data) {
+            fieldErrors.dataFine = 'La data finale deve essere uguale o successiva alla data iniziale';
+        }
+
+        const intervalDates = getDatesInRange(rigaForm.data, endDate);
+
+        if (intervalDates.length === 0) {
+            fieldErrors.data = 'Intervallo date non valido';
+        }
+
+        const datesOutsideMonth = intervalDates.filter((date) => {
+            const [year, month] = date.split('-').map(Number);
+            return year !== timesheetInfo.anno || month !== timesheetInfo.mese;
+        });
+
+        if (datesOutsideMonth.length > 0) {
+            fieldErrors.data = `Le date devono appartenere a ${getMonthLabel(timesheetInfo.mese)} ${timesheetInfo.anno}`;
+            if (!editingRigaId) {
+                fieldErrors.dataFine = `Le date devono appartenere a ${getMonthLabel(timesheetInfo.mese)} ${timesheetInfo.anno}`;
+            }
+        }
+
+        if (Object.keys(fieldErrors).length > 0) {
+            return {
+                formError: 'Controlla i campi evidenziati della riga',
+                fieldErrors,
+            };
+        }
+
+        return { formError: null, fieldErrors: {} };
     };
 
     const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -344,29 +471,47 @@ function ModificaTimesheetPage() {
             return;
         }
 
-        const validationError = validateRigaForm();
-        if (validationError) {
-            toast.error(validationError);
+        const { formError, fieldErrors } = validateRigaForm();
+        setRigaFormErrors(fieldErrors);
+        if (formError) {
+            toast.error(formError);
             return;
         }
 
         try {
             setRigheSaving(true);
 
-            const payload = {
-                timesheetId: numericTimesheetId,
-                clienteId: Number(rigaForm.clienteId),
-                data: rigaForm.data,
-                ore: Number(rigaForm.ore),
-                minuti: Number(rigaForm.minuti),
-            };
+            const targetDates = editingRigaId !== null
+                ? [rigaForm.data]
+                : getDatesInRange(rigaForm.data, rigaForm.dataFine);
 
             if (editingRigaId !== null) {
+                const payload = {
+                    timesheetId: numericTimesheetId,
+                    clienteId: Number(rigaForm.clienteId),
+                    data: rigaForm.data,
+                    ore: Number(rigaForm.ore),
+                    minuti: Number(rigaForm.minuti),
+                };
                 const response = await updateTimesheetRigaApi(editingRigaId, payload);
                 toast.success(response.message || 'Riga timesheet aggiornata con successo');
             } else {
-                const response = await createTimesheetRigaApi(payload);
-                toast.success(response.message || 'Riga timesheet creata con successo');
+                await Promise.all(
+                    targetDates.map((date) =>
+                        createTimesheetRigaApi({
+                            timesheetId: numericTimesheetId,
+                            clienteId: Number(rigaForm.clienteId),
+                            data: date,
+                            ore: Number(rigaForm.ore),
+                            minuti: Number(rigaForm.minuti),
+                        })
+                    )
+                );
+                toast.success(
+                    targetDates.length > 1
+                        ? `Create ${targetDates.length} righe timesheet per il cliente selezionato`
+                        : 'Riga timesheet creata con successo'
+                );
             }
 
             if (timesheetInfo) {
@@ -386,9 +531,11 @@ function ModificaTimesheetPage() {
         setRigaForm({
             clienteId: String(riga.clienteId),
             data: riga.data,
+            dataFine: riga.data,
             ore: String(riga.ore),
             minuti: String(riga.minuti),
         });
+        setRigaFormErrors({});
     };
 
     const cancelEditRiga = () => {
@@ -539,6 +686,39 @@ function ModificaTimesheetPage() {
             ) : null}
 
             <div className="form-card" style={{ marginTop: '1.5rem' }}>
+                {timesheetInfo ? (
+                    <div className="timesheet-coverage-card">
+                        <div>
+                            <h2 style={{ margin: 0 }}>Copertura del mese</h2>
+                            <p className="page-subtitle" style={{ marginTop: '0.35rem' }}>
+                                Per confermare il timesheet, tutti i giorni non festivi di {getMonthLabel(timesheetInfo.mese)} {timesheetInfo.anno} devono avere almeno una riga.
+                            </p>
+                            <p className="page-subtitle" style={{ marginTop: '0.35rem' }}>
+                                Se non hai lavorato in un giorno feriale, inserisci una riga con cliente <strong>{NON_LAVORATO_CLIENT_NAME}</strong> e valori <strong>0h 0m</strong>.
+                            </p>
+                            <p className="page-subtitle" style={{ marginTop: '0.35rem' }}>
+                                I giorni festivi restano facoltativi: sono evidenziati in tabella ma non bloccano la conferma.
+                            </p>
+                        </div>
+
+                        <div className={missingRequiredDates.length === 0 ? 'coverage-ok' : 'coverage-missing'}>
+                            {missingRequiredDates.length === 0
+                                ? 'Copertura completa: il mese è pronto per la conferma.'
+                                : `Giorni non festivi ancora da compilare: ${missingRequiredDates.length}`}
+                        </div>
+
+                        {missingRequiredDates.length > 0 ? (
+                            <div className="coverage-date-list">
+                                {missingRequiredDates.map((date) => (
+                                    <span key={date} className="coverage-date-pill">
+                                        {formatDate(date)}
+                                    </span>
+                                ))}
+                            </div>
+                        ) : null}
+                    </div>
+                ) : null}
+
                 <div
                     style={{
                         display: 'flex',
@@ -584,7 +764,7 @@ function ModificaTimesheetPage() {
                                 value={rigaForm.clienteId}
                                 onChange={handleRigaChange}
                                 disabled={isReadOnly || righeSaving || clientiLoading}
-                                className="form-select"
+                                className={`form-select ${rigaFormErrors.clienteId ? 'input-error' : ''}`}
                             >
                                 <option value="">Seleziona cliente</option>
                                 {clienti.map((cliente) => (
@@ -593,6 +773,14 @@ function ModificaTimesheetPage() {
                                     </option>
                                 ))}
                             </select>
+                            {rigaFormErrors.clienteId ? (
+                                <small className="field-error">{rigaFormErrors.clienteId}</small>
+                            ) : null}
+                            {isNonLavoratoSelected ? (
+                                <small className="field-hint">
+                                    Per il cliente {NON_LAVORATO_CLIENT_NAME} la riga deve restare a 0 ore e 0 minuti.
+                                </small>
+                            ) : null}
                         </div>
 
                         <div className="form-group">
@@ -604,8 +792,34 @@ function ModificaTimesheetPage() {
                                 value={rigaForm.data}
                                 onChange={handleRigaChange}
                                 disabled={isReadOnly || righeSaving}
+                                className={rigaFormErrors.data ? 'input-error' : ''}
                             />
+                            {rigaFormErrors.data ? (
+                                <small className="field-error">{rigaFormErrors.data}</small>
+                            ) : null}
                         </div>
+
+                        {editingRigaId === null ? (
+                            <div className="form-group">
+                                <label htmlFor="dataFine">Data fine</label>
+                                <input
+                                    id="dataFine"
+                                    name="dataFine"
+                                    type="date"
+                                    value={rigaForm.dataFine}
+                                    onChange={handleRigaChange}
+                                    disabled={isReadOnly || righeSaving}
+                                    className={rigaFormErrors.dataFine ? 'input-error' : ''}
+                                />
+                                {rigaFormErrors.dataFine ? (
+                                    <small className="field-error">{rigaFormErrors.dataFine}</small>
+                                ) : (
+                                    <small className="field-hint">
+                                        Inserisci un intervallo per creare una riga per ogni giorno con lo stesso cliente.
+                                    </small>
+                                )}
+                            </div>
+                        ) : null}
 
                         <div className="form-group">
                             <label htmlFor="ore">Ore</label>
@@ -618,8 +832,12 @@ function ModificaTimesheetPage() {
                                 value={rigaForm.ore}
                                 onChange={handleRigaChange}
                                 disabled={isReadOnly || righeSaving}
+                                className={rigaFormErrors.ore ? 'input-error' : ''}
                                 placeholder="Es. 8"
                             />
+                            {rigaFormErrors.ore ? (
+                                <small className="field-error">{rigaFormErrors.ore}</small>
+                            ) : null}
                         </div>
 
                         <div className="form-group">
@@ -634,8 +852,12 @@ function ModificaTimesheetPage() {
                                 value={rigaForm.minuti}
                                 onChange={handleRigaChange}
                                 disabled={isReadOnly || righeSaving}
+                                className={rigaFormErrors.minuti ? 'input-error' : ''}
                                 placeholder="Es. 30"
                             />
+                            {rigaFormErrors.minuti ? (
+                                <small className="field-error">{rigaFormErrors.minuti}</small>
+                            ) : null}
                         </div>
                     </div>
 
