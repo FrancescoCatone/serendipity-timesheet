@@ -78,6 +78,22 @@
         .col-costo {
             width: 22%;
         }
+
+        .festivo-row td {
+            background: #fff4e5;
+        }
+
+        .festivo-badge {
+            display: inline-block;
+            margin-left: 6px;
+            padding: 2px 6px;
+            border-radius: 999px;
+            background: #f59e0b;
+            color: #fff;
+            font-size: 9px;
+            font-weight: bold;
+            vertical-align: middle;
+        }
     </style>
 
 </head>
@@ -106,8 +122,11 @@
     </thead>
 
     <tbody>
-    <tr th:each="r : ${ts.righe}">
-        <td th:text="${r.clienteNome}"></td>
+    <tr th:each="r : ${ts.righe}" th:classappend="${r.festivo} ? 'festivo-row' : ''">
+        <td>
+            <span th:text="${r.clienteNome}"></span>
+            <span th:if="${r.festivo}" class="festivo-badge">Festivo</span>
+        </td>
         <td class="center" th:text="${#temporals.format(r.data, 'dd/MM/yyyy')}"></td>
         <td class="center" th:text="${r.ore}"></td>
         <td class="center" th:text="${r.minuti}"></td>

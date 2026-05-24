@@ -1,8 +1,11 @@
 package com.serendipity.backend.config;
 
+import com.serendipity.backend.model.entity.Cliente;
 import com.serendipity.backend.model.entity.Utente;
 import com.serendipity.backend.model.enums.Ruolo;
+import com.serendipity.backend.repository.ClienteRepository;
 import com.serendipity.backend.repository.UtenteRepository;
+import com.serendipity.backend.support.SystemClienti;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -25,6 +28,19 @@ public class BootstrapConfig {
                 admin.setRuolo(Ruolo.ADMIN);
                 utenteRepository.save(admin);
                 System.out.println(">>> Bootstrap: creato ADMIN admin@serendipity.com / AdminTest123!");
+            }
+        };
+    }
+
+    @Bean
+    CommandLineRunner bootstrapSystemClients(ClienteRepository clienteRepository) {
+        return args -> {
+            if (clienteRepository.findByNomeIgnoreCase(SystemClienti.NON_LAVORATO).isEmpty()) {
+                Cliente cliente = new Cliente();
+                cliente.setNome(SystemClienti.NON_LAVORATO);
+                cliente.setTariffaOraria(0);
+                clienteRepository.save(cliente);
+                System.out.println(">>> Bootstrap: creato cliente di sistema NON LAVORATO");
             }
         };
     }

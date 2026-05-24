@@ -1,8 +1,11 @@
 package com.serendipity.backend.config;
 
+import com.serendipity.backend.model.entity.Cliente;
 import com.serendipity.backend.model.entity.Utente;
 import com.serendipity.backend.model.enums.Ruolo;
+import com.serendipity.backend.repository.ClienteRepository;
 import com.serendipity.backend.repository.UtenteRepository;
+import com.serendipity.backend.support.SystemClienti;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -16,6 +19,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
 
+import java.util.Optional;
+
 @ExtendWith(MockitoExtension.class)
 class BootstrapConfigTest {
 
@@ -25,11 +30,17 @@ class BootstrapConfigTest {
     @Mock
     PasswordEncoder passwordEncoder;
 
+    @Mock
+    ClienteRepository clienteRepository;
+
     @InjectMocks
     BootstrapConfig bootstrapConfig; // istanzia la config “pura” (niente Spring context)
 
     @Captor
     ArgumentCaptor<Utente> utenteCaptor;
+
+    @Captor
+    ArgumentCaptor<Cliente> clienteCaptor;
 
     @Test
     void bootstrapAdmin_creaAdmin_quandoRepositoryVuoto() throws Exception {
@@ -75,5 +86,36 @@ class BootstrapConfigTest {
         // assert
         verify(utenteRepository).count();
         verifyNoMoreInteractions(utenteRepository, passwordEncoder);
+    }
+
+    @Test
+    void bootstrapSystemClients_creaNonLavorato_quandoAssente() throws Exception {
+        when(clienteRepository.findByNomeIgnoreCase(SystemClienti.NON_LAVORATO)).thenReturn(Optional.empty());
+        when(clienteRepository.save(any(Cliente.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        CommandLineRunner runner = bootstrapConfig.bootstrapSystemClients(clienteRepository);
+
+        runner.run();
+
+        verify(clienteRepository).findByNomeIgnoreCase(SystemClienti.NON_LAVORATO);
+        verify(clienteRepository).save(clienteCaptor.capture());
+
+        Cliente saved = clienteCaptor.getValue();
+        assertThat(saved.getNome()).isEqualTo(SystemClienti.NON_LAVORATO);
+        assertThat(saved.getTariffaOraria()).isZero();
+    }
+
+    @Test
+    void bootstrapSystemClients_nonFaNulla_quandoGiaPresente() throws Exception {
+        Cliente existing = new Cliente();
+        existing.setNome(SystemClienti.NON_LAVORATO);
+        when(clienteRepository.findByNomeIgnoreCase(SystemClienti.NON_LAVORATO)).thenReturn(Optional.of(existing));
+
+        CommandLineRunner runner = bootstrapConfig.bootstrapSystemClients(clienteRepository);
+
+        runner.run();
+
+        verify(clienteRepository).findByNomeIgnoreCase(SystemClienti.NON_LAVORATO);
+        verify(clienteRepository, never()).save(any(Cliente.class));
     }
 }

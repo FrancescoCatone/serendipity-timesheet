@@ -35,10 +35,19 @@ public interface TimesheetRigaRepository extends JpaRepository<TimesheetRiga, Lo
             )
             from TimesheetRiga r
             where r.timesheet.id = :tsId
+              and lower(r.cliente.nome) <> lower(:excludedClienteNome)
             group by r.cliente.id, r.cliente.nome
             order by r.cliente.nome
             """)
-    List<TotaleClienteDto> sumTotaliPerCliente(@Param("tsId") Long timesheetId);
+    List<TotaleClienteDto> sumTotaliPerCliente(@Param("tsId") Long timesheetId,
+                                               @Param("excludedClienteNome") String excludedClienteNome);
+
+    @Query("""
+            select distinct r.data
+            from TimesheetRiga r
+            where r.timesheet.id = :timesheetId
+            """)
+    List<LocalDate> findDistinctDatesByTimesheetId(@Param("timesheetId") Long timesheetId);
 
     @Query("""
             select r
@@ -123,12 +132,14 @@ public interface TimesheetRigaRepository extends JpaRepository<TimesheetRiga, Lo
             where r.timesheet.utente.id = :utenteId
               and (:anno is null or r.timesheet.anno = :anno)
               and (:mese is null or r.timesheet.mese = :mese)
+              and lower(r.cliente.nome) <> lower(:excludedClienteNome)
             group by r.cliente.id, r.cliente.nome
             order by r.cliente.nome asc
             """)
     List<ReportDipendenteClienteDto> reportDipendentePerCliente(@Param("utenteId") Long utenteId,
                                                                 @Param("mese") Integer mese,
-                                                                @Param("anno") Integer anno);
+                                                                @Param("anno") Integer anno,
+                                                                @Param("excludedClienteNome") String excludedClienteNome);
 
     @Query("""
             select new com.serendipity.backend.model.dto.TotaliDto(
@@ -139,9 +150,11 @@ public interface TimesheetRigaRepository extends JpaRepository<TimesheetRiga, Lo
             where r.timesheet.utente.id = :utenteId
               and (:anno is null or r.timesheet.anno = :anno)
               and (:mese is null or r.timesheet.mese = :mese)
+              and lower(r.cliente.nome) <> lower(:excludedClienteNome)
             """)
     TotaliDto totaleReportDipendente(@Param("utenteId") Long utenteId,
                                      @Param("mese") Integer mese,
-                                     @Param("anno") Integer anno);
+                                     @Param("anno") Integer anno,
+                                     @Param("excludedClienteNome") String excludedClienteNome);
 
 }

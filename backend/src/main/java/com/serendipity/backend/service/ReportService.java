@@ -10,6 +10,7 @@ import com.serendipity.backend.model.entity.Utente;
 import com.serendipity.backend.repository.ClienteRepository;
 import com.serendipity.backend.repository.TimesheetRigaRepository;
 import com.serendipity.backend.repository.UtenteRepository;
+import com.serendipity.backend.support.SystemClienti;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
@@ -100,7 +101,7 @@ public class ReportService {
                 .orElseThrow(() -> new EntityNotFoundException("Utente non trovato"));
 
         List<ReportDipendenteClienteDto> dettaglio = rigaRepository
-                .reportDipendentePerCliente(utenteId, mese, anno)
+                .reportDipendentePerCliente(utenteId, mese, anno, SystemClienti.NON_LAVORATO)
                 .stream()
                 .map(item -> new ReportDipendenteClienteDto(
                         item.clienteId(),
@@ -110,7 +111,7 @@ public class ReportService {
                 ))
                 .toList();
 
-        TotaliDto totali = rigaRepository.totaleReportDipendente(utenteId, mese, anno);
+        TotaliDto totali = rigaRepository.totaleReportDipendente(utenteId, mese, anno, SystemClienti.NON_LAVORATO);
 
         return new ReportDipendenteDto(
                 utente.getId(),

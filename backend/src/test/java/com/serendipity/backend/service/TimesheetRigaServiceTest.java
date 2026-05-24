@@ -12,6 +12,7 @@ import com.serendipity.backend.repository.ClienteRepository;
 import com.serendipity.backend.repository.TimesheetRepository;
 import com.serendipity.backend.repository.TimesheetRigaRepository;
 import com.serendipity.backend.repository.UtenteRepository;
+import com.serendipity.backend.support.SystemClienti;
 import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -330,6 +331,51 @@ class TimesheetRigaServiceTest {
         assertThatThrownBy(() -> service.save(dto))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("compresi tra 0 e 59");
+    }
+
+    @Test
+    void save_ok_zeroDuration_whenClienteNonLavorato() {
+        authAsUser();
+
+        Cliente nonLavorato = new Cliente();
+        nonLavorato.setId(99L);
+        nonLavorato.setNome(SystemClienti.NON_LAVORATO);
+        nonLavorato.setTariffaOraria(0);
+
+        CreaTimesheetRigaDto dto = new CreaTimesheetRigaDto();
+        dto.setTimesheetId(tsUserAperto.getId());
+        dto.setClienteId(nonLavorato.getId());
+        dto.setData(LocalDate.of(2025, 10, 16));
+        dto.setOre(0);
+        dto.setMinuti(0);
+
+        when(timesheetRepository.findById(tsUserAperto.getId())).thenReturn(Optional.of(tsUserAperto));
+        when(clienteRepository.findById(nonLavorato.getId())).thenReturn(Optional.of(nonLavorato));
+        when(rigaRepository.save(any(TimesheetRiga.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(mapper.toDto(any(TimesheetRiga.class))).thenAnswer(inv -> dtoFrom(inv.getArgument(0)));
+
+        var out = service.save(dto);
+        assertThat(out.getOre()).isEqualTo(0);
+        assertThat(out.getMinuti()).isEqualTo(0);
+    }
+
+    @Test
+    void save_illegal_zeroDuration_whenClienteNormale() {
+        authAsUser();
+
+        CreaTimesheetRigaDto dto = new CreaTimesheetRigaDto();
+        dto.setTimesheetId(tsUserAperto.getId());
+        dto.setClienteId(c1.getId());
+        dto.setData(LocalDate.of(2025, 10, 16));
+        dto.setOre(0);
+        dto.setMinuti(0);
+
+        when(timesheetRepository.findById(tsUserAperto.getId())).thenReturn(Optional.of(tsUserAperto));
+        when(clienteRepository.findById(c1.getId())).thenReturn(Optional.of(c1));
+
+        assertThatThrownBy(() -> service.save(dto))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("0 ore e 0 minuti");
     }
 
     /* =========================== update =========================== */

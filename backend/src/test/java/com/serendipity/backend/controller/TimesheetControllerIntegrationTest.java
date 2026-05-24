@@ -96,6 +96,25 @@ public class TimesheetControllerIntegrationTest {
         return dto;
     }
 
+    private Cliente ensureCliente(String nome, double tariffaOraria) {
+        Cliente cliente = new Cliente();
+        cliente.setNome(nome);
+        cliente.setTariffaOraria(tariffaOraria);
+        return clienteRepository.save(cliente);
+    }
+
+    private void persistRiga(Timesheet timesheet, Cliente cliente, LocalDate data, int ore, int minuti, double orario, double costo) {
+        TimesheetRiga riga = new TimesheetRiga();
+        riga.setTimesheet(timesheet);
+        riga.setCliente(cliente);
+        riga.setData(data);
+        riga.setOre(ore);
+        riga.setMinuti(minuti);
+        riga.setOrario(orario);
+        riga.setCostoOrario(costo);
+        rigaRepository.save(riga);
+    }
+
     /* ======================= GET /api/timesheets ======================= */
 
     @Test
@@ -234,11 +253,40 @@ public class TimesheetControllerIntegrationTest {
         ts.setStato(TimesheetStato.APERTO);
         ts = timesheetRepository.save(ts);
 
+        Cliente cliente = ensureCliente("Acme Conferma", 10.0);
+        for (int day = 1; day <= 31; day++) {
+            LocalDate date = LocalDate.of(2025, 10, day);
+            if (date.getDayOfWeek().getValue() == 7) {
+                continue;
+            }
+            persistRiga(ts, cliente, date, 1, 0, 1.0, 10.0);
+        }
+
         mockMvc.perform(put("/api/timesheets/{id}/conferma", ts.getId()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").value("Timesheet confermato"))
                 .andExpect(jsonPath("$.data.id").value(ts.getId().intValue()))
                 .andExpect(jsonPath("$.data.stato").value("CONFERMATO"));
+
+        assertThat(rigaRepository.findByTimesheetIdOrdered(ts.getId())).hasSize(31);
+    }
+
+    @Test
+    @WithMockUser(username = "user@serendipity.com", roles = {"DIPENDENTE"})
+    void conferma_conflict_whenMonthNotCovered() throws Exception {
+        Timesheet ts = new Timesheet();
+        ts.setAnno(2025);
+        ts.setMese(10);
+        ts.setUtente(dipendente);
+        ts.setStato(TimesheetStato.APERTO);
+        ts = timesheetRepository.save(ts);
+
+        Cliente cliente = ensureCliente("Acme Incompleto", 10.0);
+        persistRiga(ts, cliente, LocalDate.of(2025, 10, 1), 1, 0, 1.0, 10.0);
+
+        mockMvc.perform(put("/api/timesheets/{id}/conferma", ts.getId()))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("giorni feriali del mese non compilati")));
     }
 
     @Test

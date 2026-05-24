@@ -5,11 +5,15 @@ import com.serendipity.backend.model.dto.TimesheetDto;
 import com.serendipity.backend.model.dto.TotaleClienteDto;
 import com.serendipity.backend.model.dto.TotaliDto;
 import com.serendipity.backend.model.dto.create.CreaTimesheetDto;
+import com.serendipity.backend.model.entity.Cliente;
 import com.serendipity.backend.model.entity.Timesheet;
+import com.serendipity.backend.model.entity.TimesheetRiga;
 import com.serendipity.backend.model.enums.TimesheetStato;
+import com.serendipity.backend.repository.ClienteRepository;
 import com.serendipity.backend.repository.TimesheetRepository;
 import com.serendipity.backend.repository.TimesheetRigaRepository;
 import com.serendipity.backend.repository.UtenteRepository;
+import com.serendipity.backend.support.SystemClienti;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -23,7 +27,11 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Service
 public class TimesheetService {
@@ -35,10 +43,16 @@ public class TimesheetService {
     private UtenteRepository utenteRepository;
 
     @Autowired
+    private ClienteRepository clienteRepository;
+
+    @Autowired
     private TimesheetRigaRepository rigaRepository;
 
     @Autowired
     private TimesheetMapper mapper;
+
+    @Autowired
+    private CalendarioFestivitaService calendarioFestivitaService;
 
 
     /**
@@ -247,6 +261,9 @@ public class TimesheetService {
             throw new IllegalStateException("Puoi confermare solo un timesheet APERTO");
         }
 
+        ensureRequiredDaysCovered(ts);
+        createMissingHolidayRows(ts);
+
         ts.setStato(TimesheetStato.CONFERMATO);
         return mapper.toDto(timesheetRepository.save(ts));
     }
@@ -325,7 +342,7 @@ public class TimesheetService {
             double costoRounded = BigDecimal.valueOf(raw.totaleCosto()).setScale(2, RoundingMode.HALF_UP).doubleValue();
             return new TotaliDto(orarioRounded, costoRounded);
         } else {
-            return rigaRepository.sumTotaliPerCliente(timesheetId).stream()
+            return rigaRepository.sumTotaliPerCliente(timesheetId, SystemClienti.NON_LAVORATO).stream()
                     .map(p -> new TotaleClienteDto(
                             p.clienteId(),
                             p.clienteNome(),
@@ -391,6 +408,61 @@ public class TimesheetService {
             }
         }
         return ts;
+    }
+
+    private void ensureRequiredDaysCovered(Timesheet ts) {
+        YearMonth yearMonth = YearMonth.of(ts.getAnno(), ts.getMese());
+        Set<LocalDate> compiledDates = rigaRepository.findDistinctDatesByTimesheetId(ts.getId()).stream()
+                .collect(Collectors.toSet());
+
+        List<LocalDate> missingDates = Stream.iterate(
+                        yearMonth.atDay(1),
+                        date -> !date.isAfter(yearMonth.atEndOfMonth()),
+                        date -> date.plusDays(1)
+                )
+                .filter(date -> !calendarioFestivitaService.isFestivo(date))
+                .filter(date -> !compiledDates.contains(date))
+                .toList();
+
+        if (!missingDates.isEmpty()) {
+            throw new IllegalStateException(
+                    "Non puoi confermare il timesheet: ci sono ancora giorni feriali del mese non compilati"
+            );
+        }
+    }
+
+    private void createMissingHolidayRows(Timesheet ts) {
+        YearMonth yearMonth = YearMonth.of(ts.getAnno(), ts.getMese());
+        Set<LocalDate> compiledDates = rigaRepository.findDistinctDatesByTimesheetId(ts.getId()).stream()
+                .collect(Collectors.toSet());
+        Cliente nonLavoratoCliente = clienteRepository.findByNomeIgnoreCase(SystemClienti.NON_LAVORATO)
+                .orElseThrow(() -> new EntityNotFoundException("Cliente di sistema NON LAVORATO non trovato"));
+
+        List<TimesheetRiga> missingHolidayRows = Stream.iterate(
+                        yearMonth.atDay(1),
+                        date -> !date.isAfter(yearMonth.atEndOfMonth()),
+                        date -> date.plusDays(1)
+                )
+                .filter(calendarioFestivitaService::isFestivo)
+                .filter(date -> !compiledDates.contains(date))
+                .map(date -> buildHolidayRow(ts, nonLavoratoCliente, date))
+                .toList();
+
+        if (!missingHolidayRows.isEmpty()) {
+            rigaRepository.saveAll(missingHolidayRows);
+        }
+    }
+
+    private TimesheetRiga buildHolidayRow(Timesheet ts, Cliente cliente, LocalDate date) {
+        TimesheetRiga row = new TimesheetRiga();
+        row.setTimesheet(ts);
+        row.setCliente(cliente);
+        row.setData(date);
+        row.setOre(0);
+        row.setMinuti(0);
+        row.setOrario(0);
+        row.setCostoOrario(0);
+        return row;
     }
 
 }

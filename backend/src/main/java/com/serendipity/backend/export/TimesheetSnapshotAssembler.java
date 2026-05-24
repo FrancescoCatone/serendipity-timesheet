@@ -6,6 +6,7 @@ import com.serendipity.backend.model.entity.Timesheet;
 import com.serendipity.backend.model.enums.TimesheetStato;
 import com.serendipity.backend.repository.TimesheetRepository;
 import com.serendipity.backend.repository.TimesheetRigaRepository;
+import com.serendipity.backend.service.CalendarioFestivitaService;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.stereotype.Component;
 
@@ -20,10 +21,14 @@ import java.util.Locale;
 public class TimesheetSnapshotAssembler {
     private final TimesheetRepository tsRepo;
     private final TimesheetRigaRepository rigaRepo;
+    private final CalendarioFestivitaService calendarioFestivitaService;
 
-    public TimesheetSnapshotAssembler(TimesheetRepository tsRepo, TimesheetRigaRepository rigaRepo) {
+    public TimesheetSnapshotAssembler(TimesheetRepository tsRepo,
+                                      TimesheetRigaRepository rigaRepo,
+                                      CalendarioFestivitaService calendarioFestivitaService) {
         this.tsRepo = tsRepo;
         this.rigaRepo = rigaRepo;
+        this.calendarioFestivitaService = calendarioFestivitaService;
     }
 
     public TimesheetSnapshotDto build(Long timesheetId) {
@@ -41,7 +46,8 @@ public class TimesheetSnapshotAssembler {
                         r.getOre(),
                         r.getMinuti(),
                         BigDecimal.valueOf(r.getOrario()).setScale(2, RoundingMode.HALF_UP),
-                        BigDecimal.valueOf(r.getCostoOrario()).setScale(2, RoundingMode.HALF_UP)
+                        BigDecimal.valueOf(r.getCostoOrario()).setScale(2, RoundingMode.HALF_UP),
+                        calendarioFestivitaService.isFestivo(r.getData())
                 ))
                 .toList();
 

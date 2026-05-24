@@ -11,6 +11,7 @@ import com.serendipity.backend.model.enums.Ruolo;
 import com.serendipity.backend.model.enums.TimesheetStato;
 import com.serendipity.backend.repository.TimesheetRepository;
 import com.serendipity.backend.repository.TimesheetRigaRepository;
+import com.serendipity.backend.service.CalendarioFestivitaService;
 import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -34,6 +35,8 @@ class TimesheetSnapshotAssemblerTest {
     private TimesheetRepository tsRepo;
     @Mock
     private TimesheetRigaRepository rigaRepo;
+    @Mock
+    private CalendarioFestivitaService calendarioFestivitaService;
 
     @InjectMocks
     private TimesheetSnapshotAssembler assembler;
@@ -107,6 +110,8 @@ class TimesheetSnapshotAssemblerTest {
 
         when(rigaRepo.findByTimesheetIdOrdered(2L)).thenReturn(List.of(r1, r2));
         when(rigaRepo.sumTotaliByTimesheetId(2L)).thenReturn(new TotaliDto(3.5, 105.555));
+        when(calendarioFestivitaService.isFestivo(LocalDate.of(2025, 1, 10))).thenReturn(false);
+        when(calendarioFestivitaService.isFestivo(LocalDate.of(2025, 1, 11))).thenReturn(true);
 
         TimesheetSnapshotDto dto = assembler.build(2L);
 
@@ -124,6 +129,8 @@ class TimesheetSnapshotAssemblerTest {
         assertThat(dto.righe().getFirst().clienteNome()).isEqualTo("Globex");
         assertThat(dto.righe().getFirst().orario()).isEqualByComparingTo(new BigDecimal("1.50"));
         assertThat(dto.righe().getFirst().costoOrario()).isEqualByComparingTo(new BigDecimal("45.56"));
+        assertThat(dto.righe().getFirst().festivo()).isFalse();
+        assertThat(dto.righe().get(1).festivo()).isTrue();
 
         // Totali arrotondati
         assertThat(dto.totaleOrario()).isEqualByComparingTo(new BigDecimal("3.50"));

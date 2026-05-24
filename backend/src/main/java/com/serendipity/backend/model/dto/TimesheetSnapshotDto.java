@@ -20,7 +20,18 @@ public record TimesheetSnapshotDto(
             int ore,
             int minuti,
             BigDecimal orario,
-            BigDecimal costoOrario
+            BigDecimal costoOrario,
+            boolean festivo
     ) {
+        public Riga(
+                String clienteNome,
+                LocalDate data,
+                int ore,
+                int minuti,
+                BigDecimal orario,
+                BigDecimal costoOrario
+        ) {
+            this(clienteNome, data, ore, minuti, orario, costoOrario, false);
+        }
     }
 }

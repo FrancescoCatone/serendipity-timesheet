@@ -10,6 +10,7 @@ import com.serendipity.backend.repository.ClienteRepository;
 import com.serendipity.backend.repository.TimesheetRepository;
 import com.serendipity.backend.repository.TimesheetRigaRepository;
 import com.serendipity.backend.repository.UtenteRepository;
+import com.serendipity.backend.support.SystemClienti;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.AccessDeniedException;
@@ -198,6 +199,18 @@ public class TimesheetRigaService {
         }
         if (dto.getMinuti() < 0 || dto.getMinuti() > 59) {
             throw new IllegalArgumentException("I minuti devono essere compresi tra 0 e 59");
+        }
+
+        boolean zeroDuration = dto.getOre() == 0 && dto.getMinuti() == 0;
+        boolean nonLavorato = cliente.getNome() != null
+                && cliente.getNome().equalsIgnoreCase(SystemClienti.NON_LAVORATO);
+
+        if (zeroDuration && !nonLavorato) {
+            throw new IllegalArgumentException("Una riga con 0 ore e 0 minuti è consentita solo per il cliente NON LAVORATO");
+        }
+
+        if (!zeroDuration && nonLavorato) {
+            throw new IllegalArgumentException("Il cliente NON LAVORATO deve avere 0 ore e 0 minuti");
         }
 
         // 4) calcoli

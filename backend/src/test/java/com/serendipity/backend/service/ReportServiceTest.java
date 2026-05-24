@@ -8,6 +8,7 @@ import com.serendipity.backend.model.entity.Utente;
 import com.serendipity.backend.repository.ClienteRepository;
 import com.serendipity.backend.repository.TimesheetRigaRepository;
 import com.serendipity.backend.repository.UtenteRepository;
+import com.serendipity.backend.support.SystemClienti;
 import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -179,13 +180,13 @@ class ReportServiceTest {
 
         when(utenteRepository.findById(dipendente.getId())).thenReturn(Optional.of(dipendente));
 
-        when(rigaRepository.reportDipendentePerCliente(dipendente.getId(), 3, 2026))
+        when(rigaRepository.reportDipendentePerCliente(dipendente.getId(), 3, 2026, SystemClienti.NON_LAVORATO))
                 .thenReturn(List.of(
                         new ReportDipendenteClienteDto(10L, "Acme S.p.A.", 12.345, 222.229),
                         new ReportDipendenteClienteDto(11L, "Globex SRL", 8.111, 100.005)
                 ));
 
-        when(rigaRepository.totaleReportDipendente(dipendente.getId(), 3, 2026))
+        when(rigaRepository.totaleReportDipendente(dipendente.getId(), 3, 2026, SystemClienti.NON_LAVORATO))
                 .thenReturn(new TotaliDto(20.456, 322.234));
 
         var out = service.reportPerDipendente(dipendente.getId(), 3, 2026);
@@ -208,12 +209,12 @@ class ReportServiceTest {
 
         when(utenteRepository.findById(dipendente.getId())).thenReturn(Optional.of(dipendente));
 
-        when(rigaRepository.reportDipendentePerCliente(dipendente.getId(), 3, 2026))
+        when(rigaRepository.reportDipendentePerCliente(dipendente.getId(), 3, 2026, SystemClienti.NON_LAVORATO))
                 .thenReturn(List.of(
                         new ReportDipendenteClienteDto(10L, "Acme S.p.A.", 7.0, 140.0)
                 ));
 
-        when(rigaRepository.totaleReportDipendente(dipendente.getId(), 3, 2026))
+        when(rigaRepository.totaleReportDipendente(dipendente.getId(), 3, 2026, SystemClienti.NON_LAVORATO))
                 .thenReturn(new TotaliDto(7.0, 140.0));
 
         var out = service.reportPerDipendente(dipendente.getId(), 3, 2026);

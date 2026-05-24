@@ -7,11 +7,14 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface ClienteRepository extends JpaRepository<Cliente, Long> {
 
     boolean existsByNomeIgnoreCase(String nome);
+
+    Optional<Cliente> findByNomeIgnoreCase(String nome);
 
     @Query("""
             SELECT u.id, u.nome, u.cognome, SUM(tr.orario)

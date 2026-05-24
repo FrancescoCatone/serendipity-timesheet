@@ -4,12 +4,16 @@ import com.serendipity.backend.mapper.TimesheetMapper;
 import com.serendipity.backend.model.dto.TimesheetDto;
 import com.serendipity.backend.model.dto.TotaliDto;
 import com.serendipity.backend.model.dto.create.CreaTimesheetDto;
+import com.serendipity.backend.model.entity.Cliente;
 import com.serendipity.backend.model.entity.Timesheet;
+import com.serendipity.backend.model.entity.TimesheetRiga;
 import com.serendipity.backend.model.entity.Utente;
 import com.serendipity.backend.model.enums.TimesheetStato;
+import com.serendipity.backend.repository.ClienteRepository;
 import com.serendipity.backend.repository.TimesheetRepository;
 import com.serendipity.backend.repository.TimesheetRigaRepository;
 import com.serendipity.backend.repository.UtenteRepository;
+import com.serendipity.backend.support.SystemClienti;
 import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -31,6 +35,7 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -46,9 +51,13 @@ class TimesheetServiceTest {
     @Mock
     private UtenteRepository utenteRepository;
     @Mock
+    private ClienteRepository clienteRepository;
+    @Mock
     private TimesheetRigaRepository rigaRepository;
     @Mock
     private TimesheetMapper mapper;
+    @Mock
+    private CalendarioFestivitaService calendarioFestivitaService;
 
     private Utente admin;
     private Utente user;
@@ -488,6 +497,42 @@ class TimesheetServiceTest {
 
         var t = ts(1L, 10, user, TimesheetStato.APERTO);
         when(timesheetRepository.findById(1L)).thenReturn(Optional.of(t));
+        when(rigaRepository.findDistinctDatesByTimesheetId(1L)).thenReturn(List.of(
+                LocalDate.of(2025, 10, 1),
+                LocalDate.of(2025, 10, 2),
+                LocalDate.of(2025, 10, 3),
+                LocalDate.of(2025, 10, 4),
+                LocalDate.of(2025, 10, 6),
+                LocalDate.of(2025, 10, 7),
+                LocalDate.of(2025, 10, 8),
+                LocalDate.of(2025, 10, 9),
+                LocalDate.of(2025, 10, 10),
+                LocalDate.of(2025, 10, 11),
+                LocalDate.of(2025, 10, 13),
+                LocalDate.of(2025, 10, 14),
+                LocalDate.of(2025, 10, 15),
+                LocalDate.of(2025, 10, 16),
+                LocalDate.of(2025, 10, 17),
+                LocalDate.of(2025, 10, 18),
+                LocalDate.of(2025, 10, 20),
+                LocalDate.of(2025, 10, 21),
+                LocalDate.of(2025, 10, 22),
+                LocalDate.of(2025, 10, 23),
+                LocalDate.of(2025, 10, 24),
+                LocalDate.of(2025, 10, 25),
+                LocalDate.of(2025, 10, 27),
+                LocalDate.of(2025, 10, 28),
+                LocalDate.of(2025, 10, 29),
+                LocalDate.of(2025, 10, 30),
+                LocalDate.of(2025, 10, 31)
+        ));
+        when(calendarioFestivitaService.isFestivo(any(LocalDate.class))).thenAnswer(inv ->
+                inv.<LocalDate>getArgument(0).getDayOfWeek().getValue() == 7
+        );
+        Cliente nonLavorato = new Cliente();
+        nonLavorato.setNome(SystemClienti.NON_LAVORATO);
+        nonLavorato.setTariffaOraria(0);
+        when(clienteRepository.findByNomeIgnoreCase(SystemClienti.NON_LAVORATO)).thenReturn(Optional.of(nonLavorato));
 
         var saved = ts(1L, 10, user, TimesheetStato.CONFERMATO);
         when(timesheetRepository.save(any(Timesheet.class))).thenReturn(saved);
@@ -495,6 +540,28 @@ class TimesheetServiceTest {
 
         var out = service.conferma(1L);
         assertThat(out.stato()).isEqualTo(TimesheetStato.CONFERMATO.name());
+        verify(rigaRepository).saveAll(argThat(rows -> {
+            List<?> list = (List<?>) rows;
+            return list.size() == 4;
+        }));
+    }
+
+    @Test
+    void conferma_illegal_whenRequiredDayMissing() {
+        authAsUser();
+        stubCurrentUserLookupAsUser();
+
+        var t = ts(1L, 10, user, TimesheetStato.APERTO);
+        when(timesheetRepository.findById(1L)).thenReturn(Optional.of(t));
+        when(rigaRepository.findDistinctDatesByTimesheetId(1L)).thenReturn(List.of(
+                LocalDate.of(2025, 10, 1),
+                LocalDate.of(2025, 10, 2)
+        ));
+        when(calendarioFestivitaService.isFestivo(any(LocalDate.class))).thenReturn(false);
+
+        assertThatThrownBy(() -> service.conferma(1L))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("giorni feriali del mese non compilati");
     }
 
     @Test
@@ -647,7 +714,7 @@ class TimesheetServiceTest {
         var t = ts(1L, 10, user, TimesheetStato.APERTO);
         when(timesheetRepository.findById(1L)).thenReturn(Optional.of(t));
 
-        when(rigaRepository.sumTotaliPerCliente(1L)).thenReturn(Collections.emptyList());
+        when(rigaRepository.sumTotaliPerCliente(1L, SystemClienti.NON_LAVORATO)).thenReturn(Collections.emptyList());
 
         Object res = service.totali(1L, true);
         assertThat(res).isInstanceOf(List.class);
