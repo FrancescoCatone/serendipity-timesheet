@@ -33,4 +33,7 @@ build/
 .vscode/
 
 # Config locali e segreti
-application.yml
+application-local.yml
+.env
+.env.*
+!.env.example

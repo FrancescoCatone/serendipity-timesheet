@@ -1,0 +1,32 @@
+server:
+  port: ${SERVER_PORT:8080}
+  forward-headers-strategy: framework
+
+spring:
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: ${JPA_DDL_AUTO:validate}
+    show-sql: false
+    open-in-view: false
+
+logging:
+  level:
+    org.springframework.security: WARN
+
+app:
+  security:
+    jwt-secret: ${JWT_SECRET}
+    jwt-expiration-ms: ${JWT_EXPIRATION_MS:36000000}
+    allowed-origins: ${APP_ALLOWED_ORIGINS:https://www.serendipity.it,https://serendipity.it}
+  bootstrap-admin:
+    enabled: ${APP_BOOTSTRAP_ADMIN_ENABLED:false}
+    codice-fiscale: ${APP_BOOTSTRAP_ADMIN_CODICE_FISCALE:}
+    nome: ${APP_BOOTSTRAP_ADMIN_NOME:}
+    cognome: ${APP_BOOTSTRAP_ADMIN_COGNOME:}
+    email: ${APP_BOOTSTRAP_ADMIN_EMAIL:}
+    password: ${APP_BOOTSTRAP_ADMIN_PASSWORD:}

@@ -1,14 +1,15 @@
 package com.serendipity.backend.security;
 
+import com.serendipity.backend.config.AppSecurityProperties;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
-import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
+import java.nio.charset.StandardCharsets;
 import java.security.Key;
 import java.util.Date;
 import java.util.HashMap;
@@ -18,8 +19,14 @@ import java.util.function.Function;
 @Service
 public class JwtService {
 
+    private final AppSecurityProperties securityProperties;
+
+    public JwtService(AppSecurityProperties securityProperties) {
+        this.securityProperties = securityProperties;
+    }
+
     private Key getSignInKey() {
-        byte[] keyBytes = Decoders.BASE64.decode("537442A472D4B615244536A472D4B615244536A472D4B615244536A472D4B615");
+        byte[] keyBytes = securityProperties.getJwtSecret().getBytes(StandardCharsets.UTF_8);
         return Keys.hmacShaKeyFor(keyBytes);
     }
 
@@ -46,7 +53,7 @@ public class JwtService {
                 .setClaims(extraClaims)
                 .setSubject(userDetails.getUsername())
                 .setIssuedAt(new Date(System.currentTimeMillis()))
-                .setExpiration(new Date(System.currentTimeMillis() + 1000 * 60 * 60 * 10)) // 10 ore
+                .setExpiration(new Date(System.currentTimeMillis() + securityProperties.getJwtExpirationMs()))
                 .signWith(getSignInKey(), SignatureAlgorithm.HS256)
                 .compact();
     }
@@ -72,5 +79,4 @@ public class JwtService {
                 .parseClaimsJws(token)
                 .getBody();
     }
-
 }

@@ -15,7 +15,7 @@ type ReportDipendenteParams = {
 };
 
 export async function getReportClienteApi(params: ReportClienteParams) {
-    const response = await http.get<ResponseMessage<ReportClienteDto>>('/api/report/cliente', {
+    const response = await http.get<ResponseMessage<ReportClienteDto>>('/report/cliente', {
         params,
     });
 
@@ -23,7 +23,7 @@ export async function getReportClienteApi(params: ReportClienteParams) {
 }
 
 export async function getReportDipendenteApi(params: ReportDipendenteParams) {
-    const response = await http.get<ResponseMessage<ReportDipendenteDto>>('/api/report/dipendente', {
+    const response = await http.get<ResponseMessage<ReportDipendenteDto>>('/report/dipendente', {
         params,
     });
 

@@ -1,5 +1,6 @@
 package com.serendipity.backend.security;
 
+import com.serendipity.backend.config.AppSecurityProperties;
 import com.serendipity.backend.model.entity.Utente;
 import com.serendipity.backend.model.enums.Ruolo;
 import com.serendipity.backend.repository.UtenteRepository;
@@ -24,6 +25,9 @@ class SecurityComponentsTest {
     private JwtService jwtService;
 
     @Mock
+    private AppSecurityProperties securityProperties;
+
+    @Mock
     private UtenteRepository utenteRepository;
 
     @InjectMocks
@@ -34,6 +38,9 @@ class SecurityComponentsTest {
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
+        when(securityProperties.getJwtSecret()).thenReturn("change-me-with-a-long-random-secret-at-least-32-characters");
+        when(securityProperties.getJwtExpirationMs()).thenReturn(36000000L);
+
         Utente u = new Utente();
         u.setEmail("user@serendipity.com");
         u.setPassword("encodedPass");

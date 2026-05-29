@@ -3,7 +3,7 @@ import type { ResponseMessage } from '../types/common';
 import type { CreaTimesheetRigaDto, TimesheetRigaDto } from '../types/timesheetRiga';
 
 export async function getTimesheetRigheApi(): Promise<ResponseMessage<TimesheetRigaDto[]>> {
-    const response = await http.get<ResponseMessage<TimesheetRigaDto[]>>('/api/timesheet-righe');
+    const response = await http.get<ResponseMessage<TimesheetRigaDto[]>>('/timesheet-righe');
     return response.data;
 }
 
@@ -11,7 +11,7 @@ export async function getTimesheetRigaByIdApi(
     id: number
 ): Promise<ResponseMessage<TimesheetRigaDto>> {
     const response = await http.get<ResponseMessage<TimesheetRigaDto>>(
-        `/api/timesheet-righe/${id}`
+        `/timesheet-righe/${id}`
     );
     return response.data;
 }
@@ -20,7 +20,7 @@ export async function getTimesheetRigheByTimesheetApi(
     timesheetId: number
 ): Promise<ResponseMessage<TimesheetRigaDto[]>> {
     const response = await http.get<ResponseMessage<TimesheetRigaDto[]>>(
-        `/api/timesheet-righe/by-timesheet/${timesheetId}`
+        `/timesheet-righe/by-timesheet/${timesheetId}`
     );
     return response.data;
 }
@@ -29,7 +29,7 @@ export async function createTimesheetRigaApi(
     payload: CreaTimesheetRigaDto
 ): Promise<ResponseMessage<TimesheetRigaDto>> {
     const response = await http.post<ResponseMessage<TimesheetRigaDto>>(
-        '/api/timesheet-righe',
+        '/timesheet-righe',
         payload
     );
     return response.data;
@@ -40,14 +40,14 @@ export async function updateTimesheetRigaApi(
     payload: CreaTimesheetRigaDto
 ): Promise<ResponseMessage<TimesheetRigaDto>> {
     const response = await http.put<ResponseMessage<TimesheetRigaDto>>(
-        `/api/timesheet-righe/${id}`,
+        `/timesheet-righe/${id}`,
         payload
     );
     return response.data;
 }
 
 export async function deleteTimesheetRigaApi(id: number): Promise<ResponseMessage> {
-    const response = await http.delete<ResponseMessage>(`/api/timesheet-righe/${id}`);
+    const response = await http.delete<ResponseMessage>(`/timesheet-righe/${id}`);
     return response.data;
 }
 
@@ -57,7 +57,7 @@ export async function filterTimesheetRigheApi(params: {
     data?: string;
 }): Promise<ResponseMessage<TimesheetRigaDto[]>> {
     const response = await http.get<ResponseMessage<TimesheetRigaDto[]>>(
-        '/api/timesheet-righe/filter',
+        '/timesheet-righe/filter',
         {
             params,
         }

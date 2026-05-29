@@ -1,18 +1,5 @@
-server:
-  port: 8080
-
 spring:
-  datasource:
-    url: jdbc:postgresql://localhost:5432/serendipity_db
-    username: postgres
-    password: admin
-    driver-class-name: org.postgresql.Driver
-
-  jpa:
-    hibernate:
-      ddl-auto: update
-    show-sql: true
-
-logging:
-  level:
-    org.springframework.security: DEBUG
+  application:
+    name: serendipity-timesheet
+  profiles:
+    default: dev

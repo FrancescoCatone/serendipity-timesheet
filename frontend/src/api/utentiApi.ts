@@ -12,24 +12,24 @@ type UtentiMeta = {
 };
 
 export async function getUtentiApi(): Promise<ResponseMessage<UtenteDto[], UtentiMeta>> {
-    const response = await http.get<ResponseMessage<UtenteDto[], UtentiMeta>>('/api/utenti');
+    const response = await http.get<ResponseMessage<UtenteDto[], UtentiMeta>>('/utenti');
     return response.data;
 }
 
 export async function getUtenteByIdApi(id: number): Promise<ResponseMessage<UtenteDto>> {
-    const response = await http.get<ResponseMessage<UtenteDto>>(`/api/utenti/id/${id}`);
+    const response = await http.get<ResponseMessage<UtenteDto>>(`/utenti/id/${id}`);
     return response.data;
 }
 
 export async function getMyProfileApi(): Promise<ResponseMessage<ProfiloUtenteDto>> {
-    const response = await http.get<ResponseMessage<ProfiloUtenteDto>>('/api/utenti/me');
+    const response = await http.get<ResponseMessage<ProfiloUtenteDto>>('/utenti/me');
     return response.data;
 }
 
 export async function createUtenteApi(
     payload: CreaUtenteDto
 ): Promise<ResponseMessage<UtenteDto>> {
-    const response = await http.post<ResponseMessage<UtenteDto>>('/api/utenti', payload);
+    const response = await http.post<ResponseMessage<UtenteDto>>('/utenti', payload);
     return response.data;
 }
 
@@ -37,18 +37,18 @@ export async function updateUtenteApi(
     id: number,
     payload: CreaUtenteDto
 ): Promise<ResponseMessage<UtenteDto>> {
-    const response = await http.put<ResponseMessage<UtenteDto>>(`/api/utenti/${id}`, payload);
+    const response = await http.put<ResponseMessage<UtenteDto>>(`/utenti/${id}`, payload);
     return response.data;
 }
 
 export async function deleteUtenteApi(id: number): Promise<ResponseMessage> {
-    const response = await http.delete<ResponseMessage>(`/api/utenti/${id}`);
+    const response = await http.delete<ResponseMessage>(`/utenti/${id}`);
     return response.data;
 }
 
 export async function changeMyPasswordApi(
     payload: AggiornaPasswordDto
 ): Promise<ResponseMessage> {
-    const response = await http.patch<ResponseMessage>('/api/utenti/me/password', payload);
+    const response = await http.patch<ResponseMessage>('/utenti/me/password', payload);
     return response.data;
 }
