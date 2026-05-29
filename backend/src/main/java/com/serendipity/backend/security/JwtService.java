@@ -8,9 +8,12 @@ import io.jsonwebtoken.security.Keys;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 import java.nio.charset.StandardCharsets;
 import java.security.Key;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -26,8 +29,22 @@ public class JwtService {
     }
 
     private Key getSignInKey() {
-        byte[] keyBytes = securityProperties.getJwtSecret().getBytes(StandardCharsets.UTF_8);
+        String secret = securityProperties.getJwtSecret();
+        if (!StringUtils.hasText(secret)) {
+            throw new IllegalStateException("JWT secret non configurata. Imposta app.security.jwt-secret o JWT_SECRET.");
+        }
+
+        byte[] keyBytes = sha256(secret.trim());
         return Keys.hmacShaKeyFor(keyBytes);
+    }
+
+    private byte[] sha256(String value) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            return digest.digest(value.getBytes(StandardCharsets.UTF_8));
+        } catch (NoSuchAlgorithmException ex) {
+            throw new IllegalStateException("Algoritmo SHA-256 non disponibile per la generazione della chiave JWT.", ex);
+        }
     }
 
     public String extractUsername(String token) {
