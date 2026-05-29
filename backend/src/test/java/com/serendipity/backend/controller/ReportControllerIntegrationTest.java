@@ -191,6 +191,39 @@ class ReportControllerIntegrationTest {
                 .andExpect(status().isBadRequest());
     }
 
+    @Test
+    @WithMockUser(username = "admin@serendipity.com", roles = "ADMIN")
+    void reportClienteGiorno_ok_asAdmin() throws Exception {
+        Timesheet ts1 = persistTimesheet(dipendente, 3, 2026, TimesheetStato.APERTO);
+        Timesheet ts2 = persistTimesheet(altroDipendente, 3, 2026, TimesheetStato.APERTO);
+
+        persistRiga(ts1, clienteA, LocalDate.of(2026, 3, 12), 2, 0);  // 2.0h -> 40.00
+        persistRiga(ts2, clienteA, LocalDate.of(2026, 3, 12), 1, 30); // 1.5h -> 30.00
+        persistRiga(ts2, clienteB, LocalDate.of(2026, 3, 12), 3, 0);  // altro cliente
+
+        mockMvc.perform(get("/api/report/cliente/giorno")
+                        .param("clienteId", clienteA.getId().toString())
+                        .param("data", "2026-03-12"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value(200))
+                .andExpect(jsonPath("$.message").value("Report cliente giornaliero generato"))
+                .andExpect(jsonPath("$.data.clienteId").value(clienteA.getId().intValue()))
+                .andExpect(jsonPath("$.data.clienteNome").value("Acme S.p.A."))
+                .andExpect(jsonPath("$.data.data").value("2026-03-12"))
+                .andExpect(jsonPath("$.data.totaleOre").value(3.5))
+                .andExpect(jsonPath("$.data.totaleCosto").value(70.0))
+                .andExpect(jsonPath("$.data.dettaglioDipendenti.length()").value(2));
+    }
+
+    @Test
+    @WithMockUser(username = "user@serendipity.com", roles = "DIPENDENTE")
+    void reportClienteGiorno_forbidden_asDipendente() throws Exception {
+        mockMvc.perform(get("/api/report/cliente/giorno")
+                        .param("clienteId", clienteA.getId().toString())
+                        .param("data", "2026-03-12"))
+                .andExpect(status().isForbidden());
+    }
+
     /* ====================== REPORT DIPENDENTE ====================== */
 
     @Test

@@ -2,6 +2,7 @@ package com.serendipity.backend.service;
 
 import com.serendipity.backend.model.dto.TotaliDto;
 import com.serendipity.backend.model.dto.report.ReportClienteDipendenteDto;
+import com.serendipity.backend.model.dto.report.ReportClienteGiornoDipendenteDto;
 import com.serendipity.backend.model.dto.report.ReportDipendenteClienteDto;
 import com.serendipity.backend.model.entity.Cliente;
 import com.serendipity.backend.model.entity.Utente;
@@ -22,6 +23,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -168,6 +170,53 @@ class ReportServiceTest {
         authAsAdmin();
 
         assertThatThrownBy(() -> service.reportPerCliente(cliente.getId(), 3, 1999))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("anno");
+    }
+
+    @Test
+    void reportPerClienteGiorno_ok_asAdmin() {
+        authAsAdmin();
+
+        LocalDate data = LocalDate.of(2026, 3, 12);
+
+        when(clienteRepository.findById(cliente.getId())).thenReturn(Optional.of(cliente));
+
+        when(rigaRepository.reportClientePerDipendenteByDate(cliente.getId(), data))
+                .thenReturn(List.of(
+                        new ReportClienteGiornoDipendenteDto(2L, "Mario", "Rossi", 4.126, 103.789),
+                        new ReportClienteGiornoDipendenteDto(3L, "Anna", "Bianchi", 2.555, 63.111)
+                ));
+
+        when(rigaRepository.totaleReportClienteByDate(cliente.getId(), data))
+                .thenReturn(new TotaliDto(6.681, 166.900));
+
+        var out = service.reportPerClienteGiorno(cliente.getId(), data);
+
+        assertThat(out.clienteId()).isEqualTo(cliente.getId());
+        assertThat(out.clienteNome()).isEqualTo("Acme S.p.A.");
+        assertThat(out.data()).isEqualTo(data);
+        assertThat(out.totaleOre()).isEqualTo(6.68);
+        assertThat(out.totaleCosto()).isEqualTo(166.90);
+        assertThat(out.dettaglioDipendenti()).hasSize(2);
+        assertThat(out.dettaglioDipendenti().get(0).oreTotali()).isEqualTo(4.13);
+        assertThat(out.dettaglioDipendenti().get(0).costoTotale()).isEqualTo(103.79);
+    }
+
+    @Test
+    void reportPerClienteGiorno_forbidden_asDipendente() {
+        authAsDipendenteWithoutStub();
+
+        assertThatThrownBy(() -> service.reportPerClienteGiorno(cliente.getId(), LocalDate.of(2026, 3, 12)))
+                .isInstanceOf(AccessDeniedException.class)
+                .hasMessageContaining("giornaliero");
+    }
+
+    @Test
+    void reportPerClienteGiorno_invalidData() {
+        authAsAdmin();
+
+        assertThatThrownBy(() -> service.reportPerClienteGiorno(cliente.getId(), LocalDate.of(1999, 12, 31)))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("anno");
     }

@@ -2,6 +2,7 @@ package com.serendipity.backend.controller;
 
 import com.serendipity.backend.model.dto.ResponseMessage;
 import com.serendipity.backend.model.dto.report.ReportClienteDto;
+import com.serendipity.backend.model.dto.report.ReportClienteGiornoDto;
 import com.serendipity.backend.model.dto.report.ReportDipendenteDto;
 import com.serendipity.backend.service.ReportService;
 import org.springframework.http.ResponseEntity;
@@ -10,6 +11,8 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.time.LocalDate;
 
 @RestController
 @RequestMapping("/api/report")
@@ -39,6 +42,16 @@ public class ReportController {
     ) {
         ReportClienteDto report = service.reportPerCliente(clienteId, mese, anno);
         return ResponseEntity.ok(new ResponseMessage(200, "Report cliente generato", report));
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @GetMapping("/cliente/giorno")
+    public ResponseEntity<ResponseMessage> reportPerClienteGiorno(
+            @RequestParam Long clienteId,
+            @RequestParam LocalDate data
+    ) {
+        ReportClienteGiornoDto report = service.reportPerClienteGiorno(clienteId, data);
+        return ResponseEntity.ok(new ResponseMessage(200, "Report cliente giornaliero generato", report));
     }
 
     /**

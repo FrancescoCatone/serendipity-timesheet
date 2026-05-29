@@ -291,7 +291,7 @@ function TimesheetPage() {
         }
     };
 
-    const canOpenDetail = (timesheet: TimesheetDto): boolean => timesheet.stato !== 'CHIUSO';
+    const canOpenDetail = (_timesheet: TimesheetDto): boolean => true;
 
     const canDelete = (): boolean => role === 'ADMIN';
     const canConferma = (timesheet: TimesheetDto): boolean => timesheet.stato === 'APERTO';
@@ -483,7 +483,7 @@ function TimesheetPage() {
                                                         to={`/app/timesheet/${timesheet.id}/modifica`}
                                                         className="table-action-button edit"
                                                     >
-                                                        {timesheet.stato === 'CONFERMATO' ? 'Visualizza' : 'Modifica'}
+                                                        {timesheet.stato === 'APERTO' ? 'Modifica' : 'Visualizza'}
                                                     </Link>
                                                 ) : null}
 

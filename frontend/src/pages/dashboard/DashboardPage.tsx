@@ -22,6 +22,11 @@ function DashboardPage() {
             path: '/app/timesheet',
         },
         {
+            title: 'Report',
+            description: 'Analizza ore e costi per cliente, dipendente o giornata specifica.',
+            path: '/app/report',
+        },
+        {
             title: 'Profilo',
             description: 'Area personale per password e dati utente.',
             path: '/app/profilo',
@@ -33,6 +38,11 @@ function DashboardPage() {
             title: 'Timesheet',
             description: 'Consulta, crea e aggiorna i timesheet mensili.',
             path: '/app/timesheet',
+        },
+        {
+            title: 'Report',
+            description: 'Consulta i riepiloghi delle ore lavorate e dei costi associati.',
+            path: '/app/report',
         },
         {
             title: 'Profilo',

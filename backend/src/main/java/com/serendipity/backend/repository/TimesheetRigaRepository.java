@@ -3,6 +3,7 @@ package com.serendipity.backend.repository;
 import com.serendipity.backend.model.dto.TotaleClienteDto;
 import com.serendipity.backend.model.dto.TotaliDto;
 import com.serendipity.backend.model.dto.report.ReportClienteDipendenteDto;
+import com.serendipity.backend.model.dto.report.ReportClienteGiornoDipendenteDto;
 import com.serendipity.backend.model.dto.report.ReportDipendenteClienteDto;
 import com.serendipity.backend.model.entity.TimesheetRiga;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -120,6 +121,35 @@ public interface TimesheetRigaRepository extends JpaRepository<TimesheetRiga, Lo
     TotaliDto totaleReportCliente(@Param("clienteId") Long clienteId,
                                   @Param("mese") Integer mese,
                                   @Param("anno") Integer anno);
+
+    @Query("""
+            select new com.serendipity.backend.model.dto.report.ReportClienteGiornoDipendenteDto(
+                r.timesheet.utente.id,
+                r.timesheet.utente.nome,
+                r.timesheet.utente.cognome,
+                coalesce(sum(r.orario), 0),
+                coalesce(sum(r.costoOrario), 0)
+            )
+            from TimesheetRiga r
+            where r.cliente.id = :clienteId
+              and r.data = :data
+            group by r.timesheet.utente.id, r.timesheet.utente.nome, r.timesheet.utente.cognome
+            order by r.timesheet.utente.cognome asc, r.timesheet.utente.nome asc
+            """)
+    List<ReportClienteGiornoDipendenteDto> reportClientePerDipendenteByDate(@Param("clienteId") Long clienteId,
+                                                                             @Param("data") LocalDate data);
+
+    @Query("""
+            select new com.serendipity.backend.model.dto.TotaliDto(
+                coalesce(sum(r.orario), 0),
+                coalesce(sum(r.costoOrario), 0)
+            )
+            from TimesheetRiga r
+            where r.cliente.id = :clienteId
+              and r.data = :data
+            """)
+    TotaliDto totaleReportClienteByDate(@Param("clienteId") Long clienteId,
+                                        @Param("data") LocalDate data);
 
     @Query("""
             select new com.serendipity.backend.model.dto.report.ReportDipendenteClienteDto(

@@ -2,11 +2,16 @@ import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-toastify';
 import PageHeader from '../../components/common/PageHeader';
 import { getClientiApi } from '../../api/clientiApi';
-import { getReportClienteApi, getReportDipendenteApi } from '../../api/reportApi';
+import {
+    getReportClienteApi,
+    getReportClienteGiornoApi,
+    getReportDipendenteApi,
+} from '../../api/reportApi';
 import { getMyProfileApi, getUtentiApi } from '../../api/utentiApi';
 import type { ClienteDto } from '../../types/cliente';
 import type {
     ReportClienteDto,
+    ReportClienteGiornoDto,
     ReportDipendenteDto,
     ReportMode,
 } from '../../types/report';
@@ -35,7 +40,20 @@ const MONTH_OPTIONS = [
 ];
 
 function formatCurrency(value: number): string {
-    return `€ ${value.toFixed(2)}`;
+    return `EUR ${value.toFixed(2)}`;
+}
+
+function formatDisplayDate(value: string): string {
+    if (!value) {
+        return 'Data non selezionata';
+    }
+
+    const [year, month, day] = value.split('-');
+    if (!year || !month || !day) {
+        return value;
+    }
+
+    return `${day}/${month}/${year}`;
 }
 
 function ReportPage() {
@@ -51,6 +69,7 @@ function ReportPage() {
         mese: '',
         clienteId: '',
         utenteId: '',
+        data: '',
     });
 
     const [clienti, setClienti] = useState<ClienteDto[]>([]);
@@ -60,6 +79,7 @@ function ReportPage() {
     const [loadingReport, setLoadingReport] = useState(false);
 
     const [reportCliente, setReportCliente] = useState<ReportClienteDto | null>(null);
+    const [reportClienteGiorno, setReportClienteGiorno] = useState<ReportClienteGiornoDto | null>(null);
     const [reportDipendente, setReportDipendente] = useState<ReportDipendenteDto | null>(null);
 
     const [myProfile, setMyProfile] = useState<ProfiloUtenteDto | null>(null);
@@ -105,19 +125,22 @@ function ReportPage() {
         void loadData();
     }, [isAdmin]);
 
+    const resetResults = () => {
+        setReportCliente(null);
+        setReportClienteGiorno(null);
+        setReportDipendente(null);
+    };
+
     const handleModeChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
         const newMode = event.target.value as ReportMode;
 
         setMode(newMode);
-        setReportCliente(null);
-        setReportDipendente(null);
-
+        resetResults();
         setFilters((prev) => ({
             ...prev,
-            clienteId: newMode === 'cliente' ? prev.clienteId : '',
-            utenteId: newMode === 'dipendente'
-                ? (isAdmin ? prev.utenteId : prev.utenteId)
-                : '',
+            clienteId: newMode === 'dipendente' ? '' : prev.clienteId,
+            utenteId: newMode === 'dipendente' ? prev.utenteId : '',
+            data: newMode === 'cliente-giorno' ? prev.data : '',
         }));
     };
 
@@ -133,6 +156,10 @@ function ReportPage() {
     };
 
     const selectedPeriodoLabel = useMemo(() => {
+        if (mode === 'cliente-giorno') {
+            return formatDisplayDate(filters.data);
+        }
+
         if (!filters.anno) {
             return 'Periodo non selezionato';
         }
@@ -143,12 +170,7 @@ function ReportPage() {
 
         const month = MONTH_OPTIONS.find((item) => String(item.value) === filters.mese);
         return month ? `${month.label} ${filters.anno}` : `Periodo ${filters.mese}/${filters.anno}`;
-    }, [filters.anno, filters.mese]);
-
-    const resetResults = () => {
-        setReportCliente(null);
-        setReportDipendente(null);
-    };
+    }, [filters.anno, filters.data, filters.mese, mode]);
 
     const handleReset = () => {
         setMode(isAdmin ? 'cliente' : 'dipendente');
@@ -157,6 +179,7 @@ function ReportPage() {
             mese: '',
             clienteId: '',
             utenteId: isAdmin ? '' : (myProfile?.id ? String(myProfile.id) : ''),
+            data: '',
         });
         resetResults();
     };
@@ -165,8 +188,31 @@ function ReportPage() {
         try {
             resetResults();
 
+            if (mode === 'cliente-giorno') {
+                if (!filters.clienteId) {
+                    toast.error('Seleziona un cliente');
+                    return;
+                }
+
+                if (!filters.data) {
+                    toast.error('Seleziona una data');
+                    return;
+                }
+
+                setLoadingReport(true);
+
+                const response = await getReportClienteGiornoApi({
+                    clienteId: Number(filters.clienteId),
+                    data: filters.data,
+                });
+
+                setReportClienteGiorno(response.data ?? null);
+                toast.success(response.message || 'Report cliente giornaliero generato con successo');
+                return;
+            }
+
             if (!filters.anno) {
-                toast.error('Seleziona almeno l’anno del report');
+                toast.error("Seleziona almeno l'anno del report");
                 return;
             }
 
@@ -220,14 +266,14 @@ function ReportPage() {
         <div>
             <PageHeader
                 title="Report"
-                subtitle="Analisi aggregata per cliente o per dipendente"
+                subtitle="Analisi aggregata per cliente, dipendente o giornata operativa"
             />
 
             <div className="form-card" style={{ marginBottom: '1.5rem' }}>
                 <div className="form-grid">
                     {isAdmin ? (
                         <div className="form-group">
-                            <label htmlFor="mode">Modalità report</label>
+                            <label htmlFor="mode">Modalita report</label>
                             <select
                                 id="mode"
                                 value={mode}
@@ -236,45 +282,62 @@ function ReportPage() {
                                 disabled={loadingSupportData || loadingReport}
                             >
                                 <option value="cliente">Per cliente</option>
+                                <option value="cliente-giorno">Per cliente e giorno</option>
                                 <option value="dipendente">Per dipendente</option>
                             </select>
                         </div>
                     ) : null}
 
-                    <div className="form-group">
-                        <label htmlFor="anno">Anno</label>
-                        <input
-                            id="anno"
-                            name="anno"
-                            type="number"
-                            min={2000}
-                            value={filters.anno}
-                            onChange={handleFilterChange}
-                            disabled={loadingSupportData || loadingReport}
-                            placeholder="Es. 2026"
-                        />
-                    </div>
+                    {mode === 'cliente-giorno' ? (
+                        <div className="form-group">
+                            <label htmlFor="data">Data</label>
+                            <input
+                                id="data"
+                                name="data"
+                                type="date"
+                                value={filters.data}
+                                onChange={handleFilterChange}
+                                disabled={loadingSupportData || loadingReport}
+                            />
+                        </div>
+                    ) : (
+                        <>
+                            <div className="form-group">
+                                <label htmlFor="anno">Anno</label>
+                                <input
+                                    id="anno"
+                                    name="anno"
+                                    type="number"
+                                    min={2000}
+                                    value={filters.anno}
+                                    onChange={handleFilterChange}
+                                    disabled={loadingSupportData || loadingReport}
+                                    placeholder="Es. 2026"
+                                />
+                            </div>
 
-                    <div className="form-group">
-                        <label htmlFor="mese">Mese</label>
-                        <select
-                            id="mese"
-                            name="mese"
-                            value={filters.mese}
-                            onChange={handleFilterChange}
-                            className="form-select"
-                            disabled={loadingSupportData || loadingReport}
-                        >
-                            <option value="">Tutto l’anno</option>
-                            {MONTH_OPTIONS.map((month) => (
-                                <option key={month.value} value={month.value}>
-                                    {month.label}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
+                            <div className="form-group">
+                                <label htmlFor="mese">Mese</label>
+                                <select
+                                    id="mese"
+                                    name="mese"
+                                    value={filters.mese}
+                                    onChange={handleFilterChange}
+                                    className="form-select"
+                                    disabled={loadingSupportData || loadingReport}
+                                >
+                                    <option value="">Tutto l'anno</option>
+                                    {MONTH_OPTIONS.map((month) => (
+                                        <option key={month.value} value={month.value}>
+                                            {month.label}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                        </>
+                    )}
 
-                    {mode === 'cliente' ? (
+                    {mode === 'cliente' || mode === 'cliente-giorno' ? (
                         <div className="form-group">
                             <label htmlFor="clienteId">Cliente</label>
                             <select
@@ -355,7 +418,7 @@ function ReportPage() {
             {reportCliente ? (
                 <div className="table-card" style={{ marginTop: '1.5rem' }}>
                     <PageHeader
-                        title={`Report cliente — ${reportCliente.clienteNome}`}
+                        title={`Report cliente - ${reportCliente.clienteNome}`}
                         subtitle={selectedPeriodoLabel}
                     />
 
@@ -401,10 +464,59 @@ function ReportPage() {
                 </div>
             ) : null}
 
+            {reportClienteGiorno ? (
+                <div className="table-card" style={{ marginTop: '1.5rem' }}>
+                    <PageHeader
+                        title={`Report cliente giornaliero - ${reportClienteGiorno.clienteNome}`}
+                        subtitle={formatDisplayDate(reportClienteGiorno.data)}
+                    />
+
+                    <div className="dashboard-grid" style={{ padding: '0 24px 24px 24px' }}>
+                        <div className="dashboard-card">
+                            <h2>Totale ore</h2>
+                            <p>{reportClienteGiorno.totaleOre.toFixed(2)} ore</p>
+                        </div>
+
+                        <div className="dashboard-card">
+                            <h2>Totale costo</h2>
+                            <p>{formatCurrency(reportClienteGiorno.totaleCosto)}</p>
+                        </div>
+                    </div>
+
+                    {reportClienteGiorno.dettaglioDipendenti.length === 0 ? (
+                        <div className="module-placeholder" style={{ margin: '0 24px 24px 24px' }}>
+                            <h2>Nessun dipendente trovato</h2>
+                            <p>Nessuno ha lavorato per questo cliente nella data selezionata.</p>
+                        </div>
+                    ) : (
+                        <div className="table-wrapper">
+                            <table className="app-table">
+                                <thead>
+                                    <tr>
+                                        <th>Dipendente</th>
+                                        <th>Totale ore</th>
+                                        <th>Totale costo</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {reportClienteGiorno.dettaglioDipendenti.map((item) => (
+                                        <tr key={item.utenteId}>
+                                            <td>{`${item.nome} ${item.cognome}`.trim()}</td>
+                                            <td>{item.oreTotali.toFixed(2)} ore</td>
+                                            <td>{formatCurrency(item.costoTotale)}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                </div>
+            ) : null}
+
             {reportDipendente ? (
                 <div className="table-card" style={{ marginTop: '1.5rem' }}>
                     <PageHeader
-                        title={`Report dipendente — ${reportDipendente.nome} ${reportDipendente.cognome}`.trim()}
+                        title={`Report dipendente - ${reportDipendente.nome} ${reportDipendente.cognome}`.trim()}
                         subtitle={selectedPeriodoLabel}
                     />
 
@@ -450,7 +562,7 @@ function ReportPage() {
                 </div>
             ) : null}
 
-            {!loadingSupportData && !loadingReport && !reportCliente && !reportDipendente ? (
+            {!loadingSupportData && !loadingReport && !reportCliente && !reportClienteGiorno && !reportDipendente ? (
                 <div className="module-placeholder" style={{ marginTop: '1.5rem' }}>
                     <h2>Nessun report generato</h2>
                     <p>Seleziona i filtri desiderati e genera un report per visualizzare i dati aggregati.</p>

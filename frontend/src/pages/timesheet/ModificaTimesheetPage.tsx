@@ -152,6 +152,8 @@ function ModificaTimesheetPage() {
         return form.stato === 'CONFERMATO' || form.stato === 'CHIUSO';
     }, [form.stato]);
 
+    const pageTitle = isReadOnly ? 'Visualizza timesheet' : 'Modifica timesheet';
+
     const selectedCliente = useMemo(() => {
         const selectedId = Number(rigaForm.clienteId);
         if (!selectedId) {
@@ -585,7 +587,7 @@ function ModificaTimesheetPage() {
     if (loading) {
         return (
             <div>
-                <PageHeader title="Modifica timesheet" subtitle="Caricamento dati timesheet in corso" />
+                <PageHeader title={pageTitle} subtitle="Caricamento dati timesheet in corso" />
                 <div className="module-placeholder">
                     <h2>Caricamento in corso</h2>
                     <p>Sto recuperando i dati del timesheet selezionato.</p>
@@ -596,7 +598,7 @@ function ModificaTimesheetPage() {
 
     return (
         <div>
-            <PageHeader title="Modifica timesheet"
+            <PageHeader title={pageTitle}
                 actions={<BackButton fallbackPath="/app/timesheet" />} />
 
             {isAdmin ? (

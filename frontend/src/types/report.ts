@@ -1,4 +1,4 @@
-export type ReportMode = 'cliente' | 'dipendente';
+export type ReportMode = 'cliente' | 'dipendente' | 'cliente-giorno';
 
 export interface ReportClienteDipendenteDto {
     utenteId: number;
@@ -16,6 +16,23 @@ export interface ReportClienteDto {
     totaleOre: number;
     totaleCosto: number;
     dettaglioDipendenti: ReportClienteDipendenteDto[];
+}
+
+export interface ReportClienteGiornoDipendenteDto {
+    utenteId: number;
+    nome: string;
+    cognome: string;
+    oreTotali: number;
+    costoTotale: number;
+}
+
+export interface ReportClienteGiornoDto {
+    clienteId: number;
+    clienteNome: string;
+    data: string;
+    totaleOre: number;
+    totaleCosto: number;
+    dettaglioDipendenti: ReportClienteGiornoDipendenteDto[];
 }
 
 export interface ReportDipendenteClienteDto {

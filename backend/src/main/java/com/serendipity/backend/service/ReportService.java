@@ -3,6 +3,8 @@ package com.serendipity.backend.service;
 import com.serendipity.backend.model.dto.TotaliDto;
 import com.serendipity.backend.model.dto.report.ReportClienteDipendenteDto;
 import com.serendipity.backend.model.dto.report.ReportClienteDto;
+import com.serendipity.backend.model.dto.report.ReportClienteGiornoDipendenteDto;
+import com.serendipity.backend.model.dto.report.ReportClienteGiornoDto;
 import com.serendipity.backend.model.dto.report.ReportDipendenteClienteDto;
 import com.serendipity.backend.model.dto.report.ReportDipendenteDto;
 import com.serendipity.backend.model.entity.Cliente;
@@ -20,6 +22,7 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDate;
 import java.util.List;
 
 @Service
@@ -75,6 +78,40 @@ public class ReportService {
                 cliente.getNome(),
                 mese,
                 anno,
+                round(totali.totaleOrario()),
+                round(totali.totaleCosto()),
+                dettaglio
+        );
+    }
+
+    public ReportClienteGiornoDto reportPerClienteGiorno(Long clienteId, LocalDate data) {
+        if (!currentUserIsAdmin()) {
+            throw new AccessDeniedException("Solo ADMIN puo consultare il report giornaliero per cliente");
+        }
+
+        validateData(data);
+
+        Cliente cliente = clienteRepository.findById(clienteId)
+                .orElseThrow(() -> new EntityNotFoundException("Cliente non trovato"));
+
+        List<ReportClienteGiornoDipendenteDto> dettaglio = rigaRepository
+                .reportClientePerDipendenteByDate(clienteId, data)
+                .stream()
+                .map(item -> new ReportClienteGiornoDipendenteDto(
+                        item.utenteId(),
+                        item.nome(),
+                        item.cognome(),
+                        round(item.oreTotali()),
+                        round(item.costoTotale())
+                ))
+                .toList();
+
+        TotaliDto totali = rigaRepository.totaleReportClienteByDate(clienteId, data);
+
+        return new ReportClienteGiornoDto(
+                cliente.getId(),
+                cliente.getNome(),
+                data,
                 round(totali.totaleOrario()),
                 round(totali.totaleCosto()),
                 dettaglio
@@ -141,6 +178,16 @@ public class ReportService {
 
         if (anno != null && anno < 2000) {
             throw new IllegalArgumentException("L'anno deve essere maggiore o uguale a 2000");
+        }
+    }
+
+    private void validateData(LocalDate data) {
+        if (data == null) {
+            throw new IllegalArgumentException("La data del report e obbligatoria");
+        }
+
+        if (data.getYear() < 2000) {
+            throw new IllegalArgumentException("L'anno della data deve essere maggiore o uguale a 2000");
         }
     }
 
