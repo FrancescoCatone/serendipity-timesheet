@@ -1,0 +1,5 @@
+.cache_ggshield
+.vscode/
+.env.production
+deploy-bundle.tgz
+serendipity_db.dump

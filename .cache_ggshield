@@ -1,1 +1,1 @@
-{"last_found_secrets": [{"name": "Generic Password - commit://staged/backend/src/test/java/com/serendipity/backend/service/UtenteServiceTest.java", "match": "efe3cf021fcef4d43caa4e464640b2eb154c93d0860ea7acef9455aeab4c971a"}]}
+{"last_found_secrets": [{"name": "Generic Password - commit://staged/frontend/src/pages/utenti/ModificaUtentePage.tsx", "match": "56f748c9198e8bb2421eb12f27f5a75f024971f3e3109842a6c7f2d8cc59601a"}]}
