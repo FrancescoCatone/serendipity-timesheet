@@ -26,10 +26,34 @@ import java.util.stream.Collectors;
 public class GlobalExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+    private static final String GENERIC_CONFLICT_MESSAGE = "Operazione non completata per un vincolo sui dati.";
 
     private ResponseMessage body(HttpStatus status, String message, Object data) {
 
         return new ResponseMessage(status.value(), message, data);
+    }
+
+    private String sanitizeDataIntegrityMessage(DataIntegrityViolationException ex) {
+        Throwable rootCause = ex.getMostSpecificCause();
+        String exceptionMessage = ex.getMessage();
+        String rootMessage = rootCause != null ? rootCause.getMessage() : null;
+
+        boolean hasWrappedDatabaseCause = rootCause != null
+                && rootCause != ex
+                && rootMessage != null
+                && !rootMessage.isBlank()
+                && !Objects.equals(rootMessage, exceptionMessage);
+
+        if (hasWrappedDatabaseCause) {
+            log.warn("Data integrity violation sanitized before returning to client: {}", rootMessage);
+            return GENERIC_CONFLICT_MESSAGE;
+        }
+
+        if (exceptionMessage == null || exceptionMessage.isBlank()) {
+            return GENERIC_CONFLICT_MESSAGE;
+        }
+
+        return exceptionMessage;
     }
 
     /* ==================== 400 BAD REQUEST ==================== */
@@ -109,7 +133,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ResponseMessage> handleDataIntegrity(DataIntegrityViolationException ex) {
         return ResponseEntity
                 .status(HttpStatus.CONFLICT)
-                .body(body(HttpStatus.CONFLICT, ex.getMostSpecificCause().getMessage(), null));
+                .body(body(HttpStatus.CONFLICT, sanitizeDataIntegrityMessage(ex), null));
     }
 
     /* ==================== Mappatura diretta ResponseStatusException ==================== */

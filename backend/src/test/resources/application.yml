@@ -1,0 +1,31 @@
+server:
+  port: 0
+
+spring:
+  datasource:
+    url: jdbc:h2:mem:serendipity_test;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+  flyway:
+    enabled: false
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+    open-in-view: false
+  sql:
+    init:
+      mode: never
+
+logging:
+  level:
+    org.springframework.security: WARN
+
+app:
+  security:
+    jwt-secret: test-only-jwt-secret-at-least-32-characters
+    jwt-expiration-ms: 36000000
+    allowed-origins: http://localhost:5173
+  bootstrap-admin:
+    enabled: false
