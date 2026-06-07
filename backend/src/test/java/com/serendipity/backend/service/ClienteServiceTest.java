@@ -31,6 +31,9 @@ class ClienteServiceTest {
     @Mock
     private ClienteMapper clienteMapper;
 
+    @Mock
+    private AdminNotificationService notificationService;
+
     @InjectMocks
     private ClienteService clienteService;
 
@@ -244,21 +247,21 @@ class ClienteServiceTest {
     // -------- delete
     @Test
     void delete_ok_existing_deletes() {
-        when(clienteRepository.existsById(2L)).thenReturn(true);
+        when(clienteRepository.findById(2L)).thenReturn(Optional.of(entity2));
 
         assertDoesNotThrow(() -> clienteService.delete(2L));
 
-        verify(clienteRepository).existsById(2L);
+        verify(clienteRepository).findById(2L);
         verify(clienteRepository).deleteById(2L);
     }
 
     @Test
     void delete_notFound_throwsEntityNotFound() {
-        when(clienteRepository.existsById(2L)).thenReturn(false);
+        when(clienteRepository.findById(2L)).thenReturn(Optional.empty());
 
         assertThrows(EntityNotFoundException.class, () -> clienteService.delete(2L));
 
-        verify(clienteRepository).existsById(2L);
+        verify(clienteRepository).findById(2L);
         verify(clienteRepository, never()).deleteById(anyLong());
     }
 

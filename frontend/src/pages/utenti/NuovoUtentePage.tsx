@@ -4,6 +4,7 @@ import { toast } from 'react-toastify';
 import PageHeader from '../../components/common/PageHeader';
 import { createUtenteApi } from '../../api/utentiApi';
 import { getErrorMessage } from '../../utils/error';
+import { isValidEmail } from '../../utils/validation';
 import type { Ruolo } from '../../types/utente';
 
 function NuovoUtentePage() {
@@ -44,7 +45,7 @@ function NuovoUtentePage() {
             nome,
             cognome,
             email,
-            password: pwd,
+            password: plainTextValue,
             ruolo,
         } = form;
 
@@ -53,7 +54,7 @@ function NuovoUtentePage() {
         const lastName = cognome.trim();
         const emailValue = email.trim();
 
-        if (!cf || !firstName || !lastName || !emailValue || !pwd || !ruolo) {
+        if (!cf || !firstName || !lastName || !emailValue || !plainTextValue || !ruolo) {
             return 'Compila tutti i campi obbligatori';
         }
 
@@ -65,8 +66,12 @@ function NuovoUtentePage() {
             return 'Il codice fiscale deve contenere solo lettere maiuscole e numeri';
         }
 
-        if (pwd.length < 6) {
+        if (plainTextValue.length < 6) {
             return 'La password deve contenere almeno 6 caratteri';
+        }
+
+        if (!isValidEmail(emailValue)) {
+            return "Inserisci un'email valida completa di dominio finale, ad esempio nome@dominio.it";
         }
 
         return null;

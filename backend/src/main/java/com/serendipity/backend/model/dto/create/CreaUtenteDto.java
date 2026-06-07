@@ -24,6 +24,7 @@ public class CreaUtenteDto {
 
     @NotBlank(message = "L'email è obbligatoria")
     @Email(message = "Email non valida")
+    @Pattern(regexp = "^[^\\s@]+@[^\\s@]+\\.[^\\s@]{2,}$", message = "Email non valida")
     private String email;
 
     @NotBlank(message = "La password è obbligatoria")

@@ -142,6 +142,18 @@ public class UtenteControllerIntegrationTest {
 
     @Test
     @WithMockUser(roles = "ADMIN")
+    void testCreaUtente_invalidEmail_returns400() throws Exception {
+        CreaUtenteDto dto = buildValidAdminDto();
+        dto.setEmail("admin.test@serendipity");
+
+        mockMvc.perform(post("/api/utenti")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(dto)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
     void testGetByCodiceFiscale_success() throws Exception {
         // 1️⃣ Crea un utente
         CreaUtenteDto dto = buildValidAdminDto();
@@ -250,6 +262,32 @@ public class UtenteControllerIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(updates)))
                 .andExpect(status().isConflict());
+    }
+
+    @Test
+    void testAggiornaUtente_systemOperator_daAltroAdmin_forbidden() throws Exception {
+        CreaUtenteDto dto = buildValidAdminDto();
+        dto.setEmail("system.operator@serendipitycoop.it");
+        dto.setCodiceFiscale("SYSOPR85T10A562Q");
+
+        MvcResult result = mockMvc.perform(post("/api/utenti")
+                        .with(user("system.operator@serendipitycoop.it").roles("ADMIN"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(dto)))
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        Integer id = (Integer) ((Map<String, Object>) objectMapper.readValue(
+                result.getResponse().getContentAsString(), new TypeReference<Map<String, Object>>() {
+                }).get("data")).get("id");
+
+        dto.setNome("Updated");
+
+        mockMvc.perform(put("/api/utenti/{id}", id)
+                        .with(user("admin@serendipitycoop.it").roles("ADMIN"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(dto)))
+                .andExpect(status().isForbidden());
     }
 
     @Test

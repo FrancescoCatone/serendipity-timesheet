@@ -9,6 +9,7 @@ import com.serendipity.backend.repository.ClienteRepository;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,6 +24,9 @@ public class ClienteService {
 
     @Autowired
     private ClienteMapper clienteMapper;
+
+    @Autowired
+    private AdminNotificationService notificationService;
 
     /**
      * Restituisce la lista di tutti i clienti.
@@ -64,7 +68,9 @@ public class ClienteService {
         }
         Cliente cliente = clienteMapper.fromCreateDto(dto);
         cliente.setNome(nomeNorm);
-        return clienteMapper.toDto(clienteRepository.save(cliente));
+        Cliente saved = clienteRepository.save(cliente);
+        notificationService.notifyClienteCreated(getCurrentUsernameSafe(), saved);
+        return clienteMapper.toDto(saved);
     }
 
     /**
@@ -79,6 +85,7 @@ public class ClienteService {
     public ClienteDto update(Long id, CreaClienteDto dto) {
         Cliente cliente = clienteRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Cliente non trovato con ID: " + id));
+        Cliente before = snapshotCliente(cliente);
 
         String nuovoNome = dto.getNome().trim();
 
@@ -92,7 +99,9 @@ public class ClienteService {
 
         cliente.setNome(nuovoNome);
         cliente.setTariffaOraria(dto.getTariffaOraria());
-        return clienteMapper.toDto(clienteRepository.save(cliente));
+        Cliente saved = clienteRepository.save(cliente);
+        notificationService.notifyClienteUpdated(getCurrentUsernameSafe(), before, snapshotCliente(saved));
+        return clienteMapper.toDto(saved);
     }
 
     /**
@@ -102,10 +111,11 @@ public class ClienteService {
      * @throws EntityNotFoundException se il cliente non esiste
      */
     public void delete(Long id) {
-        if (!clienteRepository.existsById(id)) {
-            throw new EntityNotFoundException("Cliente non trovato con ID: " + id);
-        }
+        Cliente cliente = clienteRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Cliente non trovato con ID: " + id));
+        Cliente snapshot = snapshotCliente(cliente);
         clienteRepository.deleteById(id);
+        notificationService.notifyClienteDeleted(getCurrentUsernameSafe(), snapshot);
     }
 
     /**
@@ -146,6 +156,7 @@ public class ClienteService {
     public ResponseMessage aggiornaParziale(Long id, Map<String, Object> updates) {
         Cliente c = clienteRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Cliente non trovato"));
+        Cliente before = snapshotCliente(c);
 
         // nome (trim, not blank, max 100, unicità case-insensitive)
         if (updates.containsKey("nome")) {
@@ -170,7 +181,28 @@ public class ClienteService {
         }
 
         clienteRepository.save(c);
+        notificationService.notifyClienteUpdated(getCurrentUsernameSafe(), before, snapshotCliente(c));
         return new ResponseMessage(200, "Cliente aggiornato", null, null);
+    }
+
+    private String getCurrentUsernameSafe() {
+        var authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || authentication.getName() == null || authentication.getName().isBlank()) {
+            return "sistema";
+        }
+        return authentication.getName();
+    }
+
+    private Cliente snapshotCliente(Cliente source) {
+        if (source == null) {
+            return null;
+        }
+
+        Cliente copy = new Cliente();
+        copy.setId(source.getId());
+        copy.setNome(source.getNome());
+        copy.setTariffaOraria(source.getTariffaOraria());
+        return copy;
     }
 
 }

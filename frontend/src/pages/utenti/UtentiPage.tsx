@@ -4,10 +4,36 @@ import { toast } from 'react-toastify';
 import PageHeader from '../../components/common/PageHeader';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
 import { deleteUtenteApi, getUtentiApi } from '../../api/utentiApi';
+import { getCurrentUserProfile } from '../../utils/auth';
 import { getErrorMessage } from '../../utils/error';
+import { isSystemOperatorEmail } from '../../utils/systemUsers';
 import type { UtenteDto } from '../../types/utente';
 
+function sortUtentiWithAdminsFirst(items: UtenteDto[]): UtenteDto[] {
+    return [...items].sort((a, b) => {
+        const aIsAdmin = a.ruolo === 'ADMIN';
+        const bIsAdmin = b.ruolo === 'ADMIN';
+
+        if (aIsAdmin !== bIsAdmin) {
+            return aIsAdmin ? -1 : 1;
+        }
+
+        const byCognome = a.cognome.localeCompare(b.cognome, 'it', { sensitivity: 'base' });
+        if (byCognome !== 0) {
+            return byCognome;
+        }
+
+        const byNome = a.nome.localeCompare(b.nome, 'it', { sensitivity: 'base' });
+        if (byNome !== 0) {
+            return byNome;
+        }
+
+        return a.email.localeCompare(b.email, 'it', { sensitivity: 'base' });
+    });
+}
+
 function UtentiPage() {
+    const currentUserEmail = getCurrentUserProfile().email;
     const [utenti, setUtenti] = useState<UtenteDto[]>([]);
     const [count, setCount] = useState(0);
     const [loading, setLoading] = useState(true);
@@ -19,9 +45,10 @@ function UtentiPage() {
             setLoading(true);
 
             const response = await getUtentiApi();
+            const utentiOrdinati = sortUtentiWithAdminsFirst(response.data ?? []);
 
-            setUtenti(response.data ?? []);
-            setCount(response.meta?.count ?? response.data?.length ?? 0);
+            setUtenti(utentiOrdinati);
+            setCount(response.meta?.count ?? utentiOrdinati.length ?? 0);
         } catch (error: unknown) {
             toast.error(getErrorMessage(error, 'Errore durante il caricamento degli utenti'));
         } finally {
@@ -35,6 +62,14 @@ function UtentiPage() {
 
     const openDeleteDialog = (utente: UtenteDto) => {
         setUtenteDaEliminare(utente);
+    };
+
+    const canManageUtente = (utente: UtenteDto): boolean => {
+        if (!isSystemOperatorEmail(utente.email)) {
+            return true;
+        }
+
+        return isSystemOperatorEmail(currentUserEmail);
     };
 
     const closeDeleteDialog = () => {
@@ -124,21 +159,27 @@ function UtentiPage() {
                                         </td>
                                         <td>
                                             <div className="table-actions">
-                                                <Link
-                                                    to={`/app/utenti/${utente.id}/modifica`}
-                                                    className="table-action-button edit"
-                                                >
-                                                    Modifica
-                                                </Link>
+                                                {canManageUtente(utente) ? (
+                                                    <>
+                                                        <Link
+                                                            to={`/app/utenti/${utente.id}/modifica`}
+                                                            className="table-action-button edit"
+                                                        >
+                                                            Modifica
+                                                        </Link>
 
-                                                <button
-                                                    type="button"
-                                                    className="table-action-button delete"
-                                                    onClick={() => openDeleteDialog(utente)}
-                                                    disabled={deletingId === utente.id}
-                                                >
-                                                    {deletingId === utente.id ? 'Eliminazione...' : 'Elimina'}
-                                                </button>
+                                                        <button
+                                                            type="button"
+                                                            className="table-action-button delete"
+                                                            onClick={() => openDeleteDialog(utente)}
+                                                            disabled={deletingId === utente.id}
+                                                        >
+                                                            {deletingId === utente.id ? 'Eliminazione...' : 'Elimina'}
+                                                        </button>
+                                                    </>
+                                                ) : (
+                                                    <span className="page-subtitle">Account protetto</span>
+                                                )}
                                             </div>
                                         </td>
                                     </tr>

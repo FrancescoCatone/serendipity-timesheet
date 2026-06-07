@@ -2,9 +2,6 @@ package com.serendipity.backend.model.entity;
 
 import jakarta.persistence.*;
 
-import java.util.ArrayList;
-import java.util.List;
-
 @Entity
 @Table(name = "cliente")
 public class Cliente {

@@ -28,6 +28,9 @@ import java.util.Map;
 @Service
 public class UtenteService {
 
+    private static final String STRICT_EMAIL_REGEX = "^[^\\s@]+@[^\\s@]+\\.[^\\s@]{2,}$";
+    private static final String SYSTEM_OPERATOR_EMAIL = "system.operator@serendipitycoop.it";
+
     @Autowired
     private UtenteRepository utenteRepository;
 
@@ -36,6 +39,9 @@ public class UtenteService {
 
     @Autowired
     private UtenteMapper utenteMapper;
+
+    @Autowired
+    private AdminNotificationService notificationService;
 
     /**
      * Trova un utente per ID.
@@ -70,6 +76,7 @@ public class UtenteService {
      * @return un messaggio di risposta con lo stato e il messaggio di successo
      */
     public ResponseMessage creaUtente(CreaUtenteDto dto) {
+        validateEmailFormat(dto.getEmail());
         if (utenteRepository.existsByCodiceFiscale(dto.getCodiceFiscale())) {
             throw new DataIntegrityViolationException("Codice fiscale già esistente");
         }
@@ -89,7 +96,9 @@ public class UtenteService {
         nuovoUtente.setPassword(passwordEncoder.encode(dto.getPassword()));
         nuovoUtente.setRuolo(dto.getRuolo());
 
-        UtenteDto result = utenteMapper.toDto(utenteRepository.save(nuovoUtente));
+        Utente saved = utenteRepository.save(nuovoUtente);
+        notificationService.notifyUtenteCreated(getCurrentUsernameSafe(), saved);
+        UtenteDto result = utenteMapper.toDto(saved);
 
         return new ResponseMessage(201, "Utente creato con successo", result);
     }
@@ -118,6 +127,9 @@ public class UtenteService {
     public ResponseMessage aggiornaUtente(Long id, CreaUtenteDto dto) {
         Utente utente = utenteRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Utente non trovato"));
+        validateEmailFormat(dto.getEmail());
+        ensureCurrentUserCanManage(utente);
+        Utente before = snapshotUtente(utente);
 
         if (!utente.getCodiceFiscale().equals(dto.getCodiceFiscale())
                 && utenteRepository.existsByCodiceFiscale(dto.getCodiceFiscale())) {
@@ -137,6 +149,7 @@ public class UtenteService {
         utente.setRuolo(dto.getRuolo());
 
         utenteRepository.save(utente);
+        notificationService.notifyUtenteUpdated(getCurrentUsernameSafe(), before, snapshotUtente(utente));
 
         return new ResponseMessage(200, "Utente aggiornato con successo");
     }
@@ -148,11 +161,13 @@ public class UtenteService {
      * @return un messaggio di risposta con lo stato dell'operazione
      */
     public ResponseMessage eliminaUtente(Long id) {
-        if (!utenteRepository.existsById(id)) {
-            throw new EntityNotFoundException("Utente non trovato");
-        }
+        Utente utente = utenteRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Utente non trovato"));
+        ensureCurrentUserCanManage(utente);
+        Utente snapshot = snapshotUtente(utente);
 
         utenteRepository.deleteById(id);
+        notificationService.notifyUtenteDeleted(getCurrentUsernameSafe(), snapshot);
         return new ResponseMessage(200, "Utente eliminato con successo");
     }
 
@@ -167,6 +182,8 @@ public class UtenteService {
     public ResponseMessage aggiornaParziale(Long id, Map<String, Object> updates) {
         Utente u = utenteRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Utente non trovato"));
+        ensureCurrentUserCanManage(u);
+        Utente before = snapshotUtente(u);
 
         // nome
         if (updates.containsKey("nome")) {
@@ -182,7 +199,8 @@ public class UtenteService {
         }
         // email (unicità + lowercase)
         if (updates.containsKey("email")) {
-            String v = ((String) updates.get("email")).toLowerCase();
+            String v = ((String) updates.get("email")).toLowerCase().trim();
+            validateEmailFormat(v);
             if (!u.getEmail().equalsIgnoreCase(v) && utenteRepository.existsByEmail(v)) {
                 throw new DataIntegrityViolationException("Email già esistente");
             }
@@ -210,6 +228,7 @@ public class UtenteService {
         }
 
         utenteRepository.save(u);
+        notificationService.notifyUtenteUpdated(getCurrentUsernameSafe(), before, snapshotUtente(u));
         return new ResponseMessage(200, "Utente aggiornato", null, null);
     }
 
@@ -230,6 +249,7 @@ public class UtenteService {
         }
         u.setPassword(passwordEncoder.encode(dto.getNewPassword()));
         utenteRepository.save(u);
+        notificationService.notifyPasswordChanged(email, snapshotUtente(u));
         return new ResponseMessage(200, "Password aggiornata");
     }
 
@@ -279,6 +299,52 @@ public class UtenteService {
         Object principal = auth.getPrincipal();
         if (principal instanceof UserDetails ud) return ud.getUsername();
         return String.valueOf(principal);
+    }
+
+    private void validateEmailFormat(String email) {
+        if (email == null || !email.trim().matches(STRICT_EMAIL_REGEX)) {
+            throw new IllegalArgumentException("Email non valida");
+        }
+    }
+
+    private void ensureCurrentUserCanManage(Utente target) {
+        if (isProtectedSystemOperator(target) && !currentUserIsSystemOperator()) {
+            throw new AccessDeniedException("Non puoi modificare o eliminare l'account system operator.");
+        }
+    }
+
+    private boolean isProtectedSystemOperator(Utente utente) {
+        return utente != null
+                && utente.getEmail() != null
+                && utente.getEmail().trim().equalsIgnoreCase(SYSTEM_OPERATOR_EMAIL);
+    }
+
+    private boolean currentUserIsSystemOperator() {
+        return SYSTEM_OPERATOR_EMAIL.equalsIgnoreCase(getCurrentUsername());
+    }
+
+    private String getCurrentUsernameSafe() {
+        try {
+            return getCurrentUsername();
+        } catch (IllegalStateException ex) {
+            return "sistema";
+        }
+    }
+
+    private Utente snapshotUtente(Utente source) {
+        if (source == null) {
+            return null;
+        }
+
+        Utente copy = new Utente();
+        copy.setId(source.getId());
+        copy.setCodiceFiscale(source.getCodiceFiscale());
+        copy.setNome(source.getNome());
+        copy.setCognome(source.getCognome());
+        copy.setEmail(source.getEmail());
+        copy.setPassword(source.getPassword());
+        copy.setRuolo(source.getRuolo());
+        return copy;
     }
 
 }

@@ -137,6 +137,7 @@ function ModificaTimesheetPage() {
     const [editingRigaId, setEditingRigaId] = useState<number | null>(null);
     const [deletingRigaId, setDeletingRigaId] = useState<number | null>(null);
     const [rigaDaEliminare, setRigaDaEliminare] = useState<TimesheetRigaDto | null>(null);
+    const [useDateRange, setUseDateRange] = useState(false);
 
     const [rigaForm, setRigaForm] = useState<RigaFormState>({
         clienteId: '',
@@ -186,6 +187,7 @@ function ModificaTimesheetPage() {
         });
         setRigaFormErrors({});
         setEditingRigaId(null);
+        setUseDateRange(false);
     }, []);
 
     const loadClienti = useCallback(async () => {
@@ -362,7 +364,7 @@ function ModificaTimesheetPage() {
         if (!rigaForm.data) {
             fieldErrors.data = editingRigaId !== null ? 'Seleziona una data' : 'Seleziona una data iniziale';
         }
-        if (!editingRigaId && !rigaForm.dataFine) {
+        if (!editingRigaId && useDateRange && !rigaForm.dataFine) {
             fieldErrors.dataFine = 'Seleziona una data finale';
         }
         if (rigaForm.ore === '') {
@@ -398,9 +400,11 @@ function ModificaTimesheetPage() {
             fieldErrors.ore = 'Il cliente NON LAVORATO deve avere 0 ore e 0 minuti';
         }
 
-        const endDate = editingRigaId !== null ? rigaForm.data : rigaForm.dataFine;
+        const endDate = editingRigaId !== null
+            ? rigaForm.data
+            : (useDateRange ? rigaForm.dataFine : rigaForm.data);
 
-        if (!editingRigaId && rigaForm.data && endDate && endDate < rigaForm.data) {
+        if (!editingRigaId && useDateRange && rigaForm.data && endDate && endDate < rigaForm.data) {
             fieldErrors.dataFine = 'La data finale deve essere uguale o successiva alla data iniziale';
         }
 
@@ -417,7 +421,7 @@ function ModificaTimesheetPage() {
 
         if (datesOutsideMonth.length > 0) {
             fieldErrors.data = `Le date devono appartenere a ${getMonthLabel(timesheetInfo.mese)} ${timesheetInfo.anno}`;
-            if (!editingRigaId) {
+            if (!editingRigaId && useDateRange) {
                 fieldErrors.dataFine = `Le date devono appartenere a ${getMonthLabel(timesheetInfo.mese)} ${timesheetInfo.anno}`;
             }
         }
@@ -484,7 +488,7 @@ function ModificaTimesheetPage() {
 
             const targetDates = editingRigaId !== null
                 ? [rigaForm.data]
-                : getDatesInRange(rigaForm.data, rigaForm.dataFine);
+                : getDatesInRange(rigaForm.data, useDateRange ? rigaForm.dataFine : rigaForm.data);
 
             if (editingRigaId !== null) {
                 const payload = {
@@ -529,6 +533,7 @@ function ModificaTimesheetPage() {
 
     const startEditRiga = (riga: TimesheetRigaDto) => {
         setEditingRigaId(riga.id);
+        setUseDateRange(false);
         setRigaForm({
             clienteId: String(riga.clienteId),
             data: riga.data,
@@ -756,6 +761,39 @@ function ModificaTimesheetPage() {
                 ) : null}
 
                 <form onSubmit={handleRigaSubmit} className="entity-form" style={{ marginBottom: '1.5rem' }}>
+                    {editingRigaId === null ? (
+                        <div style={{ marginBottom: '1rem' }}>
+                            <label
+                                style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '0.5rem',
+                                    cursor: isReadOnly || righeSaving ? 'default' : 'pointer',
+                                }}
+                            >
+                                <input
+                                    type="checkbox"
+                                    checked={useDateRange}
+                                    onChange={(event) => {
+                                        const checked = event.target.checked;
+                                        setUseDateRange(checked);
+                                        setRigaForm((prev) => ({
+                                            ...prev,
+                                            dataFine: checked ? (prev.dataFine || prev.data) : prev.data,
+                                        }));
+                                        setRigaFormErrors((prev) => ({
+                                            ...prev,
+                                            data: undefined,
+                                            dataFine: undefined,
+                                        }));
+                                    }}
+                                    disabled={isReadOnly || righeSaving}
+                                />
+                                <span>Inserisci un intervallo di giorni</span>
+                            </label>
+                        </div>
+                    ) : null}
+
                     <div className="form-grid">
                         <div className="form-group">
                             <label htmlFor="clienteId">Cliente</label>
@@ -802,22 +840,35 @@ function ModificaTimesheetPage() {
 
                         {editingRigaId === null ? (
                             <div className="form-group">
-                                <label htmlFor="dataFine">Data fine</label>
-                                <input
-                                    id="dataFine"
-                                    name="dataFine"
-                                    type="date"
-                                    value={rigaForm.dataFine}
-                                    onChange={handleRigaChange}
-                                    disabled={isReadOnly || righeSaving}
-                                    className={rigaFormErrors.dataFine ? 'input-error' : ''}
-                                />
-                                {rigaFormErrors.dataFine ? (
-                                    <small className="field-error">{rigaFormErrors.dataFine}</small>
+                                <label htmlFor={useDateRange ? 'dataFine' : 'modalitaInserimento'}>
+                                    {useDateRange ? 'Data fine' : 'Modalita inserimento'}
+                                </label>
+                                {useDateRange ? (
+                                    <>
+                                        <input
+                                            id="dataFine"
+                                            name="dataFine"
+                                            type="date"
+                                            value={rigaForm.dataFine}
+                                            onChange={handleRigaChange}
+                                            disabled={isReadOnly || righeSaving}
+                                            className={rigaFormErrors.dataFine ? 'input-error' : ''}
+                                        />
+                                        {rigaFormErrors.dataFine ? (
+                                            <small className="field-error">{rigaFormErrors.dataFine}</small>
+                                        ) : (
+                                            <small className="field-hint">
+                                                Creo una riga per ogni giorno compreso tra data iniziale e finale.
+                                            </small>
+                                        )}
+                                    </>
                                 ) : (
-                                    <small className="field-hint">
-                                        Inserisci un intervallo per creare una riga per ogni giorno con lo stesso cliente.
-                                    </small>
+                                    <input
+                                        id="modalitaInserimento"
+                                        type="text"
+                                        value="Sto inserendo una sola giornata"
+                                        disabled
+                                    />
                                 )}
                             </div>
                         ) : null}

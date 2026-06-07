@@ -6,7 +6,6 @@ import com.serendipity.backend.model.dto.TotaliDto;
 import com.serendipity.backend.model.dto.create.CreaTimesheetDto;
 import com.serendipity.backend.model.entity.Cliente;
 import com.serendipity.backend.model.entity.Timesheet;
-import com.serendipity.backend.model.entity.TimesheetRiga;
 import com.serendipity.backend.model.entity.Utente;
 import com.serendipity.backend.model.enums.TimesheetStato;
 import com.serendipity.backend.repository.ClienteRepository;
@@ -35,8 +34,8 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -58,6 +57,8 @@ class TimesheetServiceTest {
     private TimesheetMapper mapper;
     @Mock
     private CalendarioFestivitaService calendarioFestivitaService;
+    @Mock
+    private AdminNotificationService notificationService;
 
     private Utente admin;
     private Utente user;

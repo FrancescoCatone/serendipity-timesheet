@@ -45,6 +45,8 @@ class UtenteServiceTest {
     private PasswordEncoder passwordEncoder;
     @Mock
     private UtenteMapper utenteMapper;
+    @Mock
+    private AdminNotificationService notificationService;
 
     @InjectMocks
     private UtenteService service;
@@ -100,6 +102,14 @@ class UtenteServiceTest {
         SecurityContextHolder.getContext().setAuthentication(auth);
     }
 
+    private void authAsSystemOperator() {
+        var auth = new UsernamePasswordAuthenticationToken(
+                "system.operator@serendipitycoop.it", "x",
+                List.of(new SimpleGrantedAuthority("ROLE_ADMIN"))
+        );
+        SecurityContextHolder.getContext().setAuthentication(auth);
+    }
+
     /* ----------------------------- getAll ------------------------------ */
 
     @Test
@@ -145,6 +155,15 @@ class UtenteServiceTest {
         assertThatThrownBy(() -> service.creaUtente(d))
                 .isInstanceOf(DataIntegrityViolationException.class)
                 .hasMessageContaining("Email");
+    }
+
+    @Test
+    void creaUtente_emailSenzaTld_badRequest() {
+        var d = dto("mario@acme", "RSSMRA85T10A562S", Ruolo.DIPENDENTE);
+
+        assertThatThrownBy(() -> service.creaUtente(d))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Email non valida");
     }
 
     @Test
@@ -234,6 +253,18 @@ class UtenteServiceTest {
     }
 
     @Test
+    void aggiornaUtente_emailSenzaTld_badRequest() {
+        Utente existing = ent(1L, "old@acme.it", "RSSMRA85T10A562S", Ruolo.DIPENDENTE);
+        when(utenteRepository.findById(1L)).thenReturn(Optional.of(existing));
+
+        var d = dto("new@acme", "RSSMRA85T10A562S", Ruolo.DIPENDENTE);
+
+        assertThatThrownBy(() -> service.aggiornaUtente(1L, d))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Email non valida");
+    }
+
+    @Test
     void aggiornaUtente_ok_saves_and_encodesPassword() {
         Utente existing = ent(1L, "old@acme.it", "RSSMRA85T10A562S", Ruolo.DIPENDENTE);
         when(utenteRepository.findById(1L)).thenReturn(Optional.of(existing));
@@ -250,21 +281,59 @@ class UtenteServiceTest {
         verify(utenteRepository).save(existing);
     }
 
+    @Test
+    void aggiornaUtente_systemOperator_daAltroAdmin_forbidden() {
+        authAsAdmin();
+        Utente existing = ent(1L, "system.operator@serendipitycoop.it", "RSSMRA85T10A562S", Ruolo.ADMIN);
+        when(utenteRepository.findById(1L)).thenReturn(Optional.of(existing));
+
+        var d = dto("system.operator@serendipitycoop.it", "RSSMRA85T10A562S", Ruolo.ADMIN);
+
+        assertThatThrownBy(() -> service.aggiornaUtente(1L, d))
+                .isInstanceOf(AccessDeniedException.class)
+                .hasMessageContaining("system operator");
+    }
+
+    @Test
+    void aggiornaUtente_systemOperator_daSeStesso_ok() {
+        authAsSystemOperator();
+        Utente existing = ent(1L, "system.operator@serendipitycoop.it", "RSSMRA85T10A562S", Ruolo.ADMIN);
+        when(utenteRepository.findById(1L)).thenReturn(Optional.of(existing));
+        when(passwordEncoder.encode(TEST_PWD)).thenReturn("ENC2");
+
+        var d = dto("system.operator@serendipitycoop.it", "RSSMRA85T10A562S", Ruolo.ADMIN);
+
+        var resp = service.aggiornaUtente(1L, d);
+        assertThat(resp.getStatus()).isEqualTo(200);
+    }
+
     /* ----------------------------- eliminaUtente ----------------------- */
 
     @Test
     void eliminaUtente_notFound_throws404() {
-        when(utenteRepository.existsById(9L)).thenReturn(false);
+        when(utenteRepository.findById(9L)).thenReturn(Optional.empty());
         assertThatThrownBy(() -> service.eliminaUtente(9L))
                 .isInstanceOf(EntityNotFoundException.class);
     }
 
     @Test
     void eliminaUtente_ok_deletes() {
-        when(utenteRepository.existsById(9L)).thenReturn(true);
+        when(utenteRepository.findById(9L)).thenReturn(Optional.of(ent(9L, "mario@acme.it", "RSSMRA85T10A562S", Ruolo.DIPENDENTE)));
         var resp = service.eliminaUtente(9L);
         assertThat(resp.getStatus()).isEqualTo(200);
         verify(utenteRepository).deleteById(9L);
+    }
+
+    @Test
+    void eliminaUtente_systemOperator_daAltroAdmin_forbidden() {
+        authAsAdmin();
+        Utente existing = ent(9L, "system.operator@serendipitycoop.it", "RSSMRA85T10A562S", Ruolo.ADMIN);
+        when(utenteRepository.findById(9L)).thenReturn(Optional.of(existing));
+
+        assertThatThrownBy(() -> service.eliminaUtente(9L))
+                .isInstanceOf(AccessDeniedException.class)
+                .hasMessageContaining("system operator");
+        verify(utenteRepository, never()).deleteById(anyLong());
     }
 
     /* ---------------------------- aggiornaParziale --------------------- */
@@ -311,6 +380,29 @@ class UtenteServiceTest {
         assertThat(resp.getStatus()).isEqualTo(200);
         assertThat(u.getEmail()).isEqualTo("new@acme.it");
         verify(utenteRepository).save(u);
+    }
+
+    @Test
+    void aggiornaParziale_emailSenzaTld_badRequest() {
+        Utente u = ent(1L, "old@acme.it", "RSSMRA85T10A562S", Ruolo.DIPENDENTE);
+        when(utenteRepository.findById(1L)).thenReturn(Optional.of(u));
+
+        assertThatThrownBy(() -> service.aggiornaParziale(1L, Map.of("email", "new@acme")))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Email non valida");
+        verify(utenteRepository, never()).save(any());
+    }
+
+    @Test
+    void aggiornaParziale_systemOperator_daAltroAdmin_forbidden() {
+        authAsAdmin();
+        Utente u = ent(1L, "system.operator@serendipitycoop.it", "RSSMRA85T10A562S", Ruolo.ADMIN);
+        when(utenteRepository.findById(1L)).thenReturn(Optional.of(u));
+
+        assertThatThrownBy(() -> service.aggiornaParziale(1L, Map.of("nome", "Nuovo")))
+                .isInstanceOf(AccessDeniedException.class)
+                .hasMessageContaining("system operator");
+        verify(utenteRepository, never()).save(any());
     }
 
     @Test

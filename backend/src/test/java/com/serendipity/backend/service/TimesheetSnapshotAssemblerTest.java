@@ -11,7 +11,6 @@ import com.serendipity.backend.model.enums.Ruolo;
 import com.serendipity.backend.model.enums.TimesheetStato;
 import com.serendipity.backend.repository.TimesheetRepository;
 import com.serendipity.backend.repository.TimesheetRigaRepository;
-import com.serendipity.backend.service.CalendarioFestivitaService;
 import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

@@ -1,6 +1,5 @@
 package com.serendipity.backend.controller;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.serendipity.backend.model.entity.Cliente;
 import com.serendipity.backend.model.entity.Timesheet;
 import com.serendipity.backend.model.entity.TimesheetRiga;

@@ -29,3 +29,5 @@ app:
     allowed-origins: http://localhost:5173
   bootstrap-admin:
     enabled: false
+  notifications:
+    enabled: false

@@ -55,6 +55,9 @@ public class TimesheetService {
     @Autowired
     private CalendarioFestivitaService calendarioFestivitaService;
 
+    @Autowired
+    private AdminNotificationService notificationService;
+
 
     /**
      * Trova un timesheet per ID.
@@ -158,9 +161,11 @@ public class TimesheetService {
     public void delete(Long id) {
         Timesheet ts = timesheetRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Timesheet non trovato con ID: " + id));
+        Timesheet snapshot = snapshotTimesheet(ts);
         rigaRepository.deleteByTimesheetId(ts.getId());
         timesheetRepository.delete(ts);
         timesheetRepository.flush();
+        notificationService.notifyTimesheetEliminato(getCurrentUsernameSafe(), snapshot);
     }
 
     /**
@@ -269,7 +274,9 @@ public class TimesheetService {
         createMissingHolidayRows(ts);
 
         ts.setStato(TimesheetStato.CONFERMATO);
-        return mapper.toDto(timesheetRepository.save(ts));
+        Timesheet saved = timesheetRepository.save(ts);
+        notificationService.notifyTimesheetConfermato(getCurrentUsernameSafe(), snapshotTimesheet(saved));
+        return mapper.toDto(saved);
     }
 
     /**
@@ -285,6 +292,7 @@ public class TimesheetService {
      */
     public TimesheetDto riapri(Long id) {
         Timesheet ts = mustReadOwnedOrAdmin(id);
+        TimesheetStato previousState = ts.getStato();
 
         if (ts.getStato() == TimesheetStato.APERTO) {
             throw new IllegalStateException("Il timesheet è già nello stato APERTO e non può essere riaperto");
@@ -292,7 +300,9 @@ public class TimesheetService {
 
         if (ts.getStato() == TimesheetStato.CONFERMATO) {
             ts.setStato(TimesheetStato.APERTO);
-            return mapper.toDto(timesheetRepository.save(ts));
+            Timesheet saved = timesheetRepository.save(ts);
+            notificationService.notifyTimesheetRiaperto(getCurrentUsernameSafe(), snapshotTimesheet(saved), previousState);
+            return mapper.toDto(saved);
         }
 
         if (ts.getStato() == TimesheetStato.CHIUSO) {
@@ -301,7 +311,9 @@ public class TimesheetService {
             }
             ts.setStato(TimesheetStato.CONFERMATO);
             ts.setDataCompilazione(null);
-            return mapper.toDto(timesheetRepository.save(ts));
+            Timesheet saved = timesheetRepository.save(ts);
+            notificationService.notifyTimesheetRiaperto(getCurrentUsernameSafe(), snapshotTimesheet(saved), previousState);
+            return mapper.toDto(saved);
         }
 
         throw new IllegalStateException("Transizione di stato non valida");
@@ -323,7 +335,9 @@ public class TimesheetService {
         }
         ts.setStato(TimesheetStato.CHIUSO);
         ts.setDataCompilazione(LocalDate.now());
-        return mapper.toDto(timesheetRepository.save(ts));
+        Timesheet saved = timesheetRepository.save(ts);
+        notificationService.notifyTimesheetChiuso(getCurrentUsernameSafe(), snapshotTimesheet(saved));
+        return mapper.toDto(saved);
     }
 
     /**
@@ -380,6 +394,14 @@ public class TimesheetService {
         return utenteRepository.findByEmail(email)
                 .orElseThrow(() -> new EntityNotFoundException("Utente corrente non trovato"))
                 .getId();
+    }
+
+    private String getCurrentUsernameSafe() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || authentication.getName() == null || authentication.getName().isBlank()) {
+            return "sistema";
+        }
+        return authentication.getName();
     }
 
     /**
@@ -467,6 +489,21 @@ public class TimesheetService {
         row.setOrario(0);
         row.setCostoOrario(0);
         return row;
+    }
+
+    private Timesheet snapshotTimesheet(Timesheet source) {
+        if (source == null) {
+            return null;
+        }
+
+        Timesheet copy = new Timesheet();
+        copy.setId(source.getId());
+        copy.setMese(source.getMese());
+        copy.setAnno(source.getAnno());
+        copy.setDataCompilazione(source.getDataCompilazione());
+        copy.setStato(source.getStato());
+        copy.setUtente(source.getUtente());
+        return copy;
     }
 
 }

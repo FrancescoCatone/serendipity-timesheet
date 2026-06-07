@@ -7,6 +7,15 @@ spring:
     username: ${DB_USERNAME:postgres}
     password: ${DB_PASSWORD:admin}
     driver-class-name: org.postgresql.Driver
+  mail:
+    host: ${MAIL_HOST:}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail.smtp.auth: ${MAIL_SMTP_AUTH:true}
+      mail.smtp.starttls.enable: ${MAIL_SMTP_STARTTLS_ENABLE:true}
+      mail.smtp.ssl.enable: ${MAIL_SMTP_SSL_ENABLE:false}
   jpa:
     hibernate:
       ddl-auto: ${JPA_DDL_AUTO:update}
@@ -29,3 +38,8 @@ app:
     cognome: ${APP_BOOTSTRAP_ADMIN_COGNOME:}
     email: ${APP_BOOTSTRAP_ADMIN_EMAIL:}
     password: ${APP_BOOTSTRAP_ADMIN_PASSWORD:}
+  notifications:
+    enabled: ${APP_NOTIFICATIONS_ENABLED:false}
+    recipient-email: ${APP_NOTIFICATIONS_RECIPIENT_EMAIL:${APP_BOOTSTRAP_ADMIN_EMAIL:}}
+    from-email: ${APP_NOTIFICATIONS_FROM_EMAIL:${MAIL_USERNAME:noreply@serendipitycoop.it}}
+    subject-prefix: ${APP_NOTIFICATIONS_SUBJECT_PREFIX:Serendipity}
