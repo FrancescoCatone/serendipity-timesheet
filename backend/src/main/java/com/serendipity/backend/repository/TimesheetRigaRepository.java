@@ -8,6 +8,7 @@ import com.serendipity.backend.model.dto.report.ReportDipendenteClienteDto;
 import com.serendipity.backend.model.entity.TimesheetRiga;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
@@ -50,6 +51,21 @@ public interface TimesheetRigaRepository extends JpaRepository<TimesheetRiga, Lo
             """)
     List<LocalDate> findDistinctDatesByTimesheetId(@Param("timesheetId") Long timesheetId);
 
+    @Modifying
+    @Query("""
+            delete
+            from TimesheetRiga r
+            where r.timesheet.id = :timesheetId
+            """)
+    void deleteByTimesheetId(@Param("timesheetId") Long timesheetId);
+
+    @Query("""
+            select count(r)
+            from TimesheetRiga r
+            where r.timesheet.id = :timesheetId
+            """)
+    long countByTimesheetId(@Param("timesheetId") Long timesheetId);
+ 
     @Query("""
             select r
             from TimesheetRiga r

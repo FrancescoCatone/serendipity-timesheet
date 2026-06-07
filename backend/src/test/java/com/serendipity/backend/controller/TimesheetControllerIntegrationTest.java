@@ -13,6 +13,7 @@ import com.serendipity.backend.repository.ClienteRepository;
 import com.serendipity.backend.repository.TimesheetRepository;
 import com.serendipity.backend.repository.TimesheetRigaRepository;
 import com.serendipity.backend.repository.UtenteRepository;
+import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -22,6 +23,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
@@ -57,6 +59,12 @@ public class TimesheetControllerIntegrationTest {
     private ClienteRepository clienteRepository;
     @Autowired
     private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private EntityManager entityManager;
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
 
     private Utente admin;
     private Utente dipendente;
@@ -323,6 +331,41 @@ public class TimesheetControllerIntegrationTest {
         mockMvc.perform(delete("/api/timesheets/{id}", ts.getId()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").value("Timesheet eliminato"));
+    }
+
+    @Test
+    @WithMockUser(username = "admin@serendipity.com", roles = "ADMIN")
+    void delete_asAdmin_alsoDeletesRelatedRows() throws Exception {
+        Timesheet ts = new Timesheet();
+        ts.setAnno(2025);
+        ts.setMese(5);
+        ts.setUtente(dipendente);
+        ts.setStato(TimesheetStato.CHIUSO);
+        ts = timesheetRepository.save(ts);
+
+        Cliente cliente = ensureCliente("Cliente Delete Test", 20.0);
+        persistRiga(ts, cliente, LocalDate.of(2025, 5, 10), 2, 30, 2.5, 50.0);
+
+        entityManager.flush();
+        entityManager.clear();
+
+        mockMvc.perform(delete("/api/timesheets/{id}", ts.getId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("Timesheet eliminato"));
+
+        Long timesheetCount = jdbcTemplate.queryForObject(
+                "select count(*) from timesheet where id = ?",
+                Long.class,
+                ts.getId()
+        );
+        Long righeCount = jdbcTemplate.queryForObject(
+                "select count(*) from timesheet_riga where timesheet_id = ?",
+                Long.class,
+                ts.getId()
+        );
+
+        assertThat(timesheetCount).isZero();
+        assertThat(righeCount).isZero();
     }
 
     @Test

@@ -15,6 +15,7 @@ import com.serendipity.backend.repository.TimesheetRigaRepository;
 import com.serendipity.backend.repository.UtenteRepository;
 import com.serendipity.backend.support.SystemClienti;
 import jakarta.persistence.EntityNotFoundException;
+import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Sort;
@@ -153,10 +154,13 @@ public class TimesheetService {
      * @param id ID del timesheet da eliminare
      * @throws EntityNotFoundException se il timesheet non esiste o l'utente non è autorizzato
      */
+    @Transactional
     public void delete(Long id) {
         Timesheet ts = timesheetRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Timesheet non trovato con ID: " + id));
+        rigaRepository.deleteByTimesheetId(ts.getId());
         timesheetRepository.delete(ts);
+        timesheetRepository.flush();
     }
 
     /**
