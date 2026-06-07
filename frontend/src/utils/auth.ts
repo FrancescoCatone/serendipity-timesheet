@@ -10,8 +10,56 @@ export interface CurrentUserProfile {
     codiceFiscale: string | null;
 }
 
+function clearInvalidToken(): null {
+    removeToken();
+    return null;
+}
+
+function getNumericClaim(payload: Record<string, unknown>, key: string): number | null {
+    const value = payload[key];
+
+    if (typeof value === 'number' && Number.isFinite(value)) {
+        return value;
+    }
+
+    if (typeof value === 'string' && value.trim()) {
+        const parsed = Number(value);
+        return Number.isFinite(parsed) ? parsed : null;
+    }
+
+    return null;
+}
+
+function isTokenExpiredPayload(payload: Record<string, unknown>): boolean {
+    const expiration = getNumericClaim(payload, 'exp');
+
+    if (expiration === null) {
+        return true;
+    }
+
+    return Date.now() >= expiration * 1000;
+}
+
+function getCurrentTokenPayload(): Record<string, unknown> | null {
+    const token = getToken();
+    if (!token) {
+        return null;
+    }
+
+    const payload = parseJwtPayload(token);
+    if (!payload || isTokenExpiredPayload(payload)) {
+        return clearInvalidToken();
+    }
+
+    return payload;
+}
+
+export function getValidToken(): string | null {
+    return getCurrentTokenPayload() ? getToken() : null;
+}
+
 export function isAuthenticated(): boolean {
-    return !!getToken();
+    return !!getValidToken();
 }
 
 export function logout(): void {
@@ -114,12 +162,7 @@ function getStringClaim(
 }
 
 export function getCurrentUserRole(): AppRole {
-    const token = getToken();
-    if (!token) {
-        return null;
-    }
-
-    const payload = parseJwtPayload(token);
+    const payload = getCurrentTokenPayload();
     if (!payload) {
         return null;
     }
@@ -153,18 +196,7 @@ export function isAdmin(): boolean {
 }
 
 export function getCurrentUserProfile(): CurrentUserProfile {
-    const token = getToken();
-    if (!token) {
-        return {
-            email: null,
-            ruolo: null,
-            nome: null,
-            cognome: null,
-            codiceFiscale: null,
-        };
-    }
-
-    const payload = parseJwtPayload(token);
+    const payload = getCurrentTokenPayload();
     if (!payload) {
         return {
             email: null,

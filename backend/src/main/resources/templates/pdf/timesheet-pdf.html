@@ -5,38 +5,43 @@
     <title th:text="'Timesheet - ' + ${ts.utenteNomeCompleto}"></title>
     <style>
         @page {
-            margin: 22mm 16mm;
+            margin: 14mm 10mm 12mm;
         }
 
         body {
             font-family: sans-serif;
-            font-size: 11px;
+            font-size: 10px;
+            line-height: 1.25;
             color: #000;
         }
 
         /* Header principale (stile ex titolo Timesheet) */
         .header-main {
-            font-size: 18px;
+            font-size: 15px;
             font-weight: bold;
-            margin-bottom: 8mm;
+            margin-bottom: 4mm;
             border-bottom: 1px solid #ccc;
-            padding-bottom: 2mm;
+            padding-bottom: 1.5mm;
         }
 
         table {
             width: 100%;
             border-collapse: collapse;
+            table-layout: fixed;
         }
 
         th, td {
             border: 1px solid #aaa;
-            padding: 6px;
-            vertical-align: top;
+            padding: 6px 5px;
+            vertical-align: middle;
         }
 
         th {
             background: #f0f0f0;
             text-align: left;
+            font-size: 9px;
+            padding-top: 7px;
+            padding-bottom: 7px;
         }
 
         tr {
@@ -45,6 +50,7 @@
 
         tfoot td {
             font-weight: bold;
+            background: #fafafa;
         }
 
         .right {
@@ -85,12 +91,12 @@
 
         .festivo-badge {
             display: inline-block;
-            margin-left: 6px;
-            padding: 2px 6px;
+            margin-left: 4px;
+            padding: 1px 5px;
             border-radius: 999px;
             background: #f59e0b;
             color: #fff;
-            font-size: 9px;
+            font-size: 8px;
             font-weight: bold;
             vertical-align: middle;
         }
@@ -112,12 +118,12 @@
 <table>
     <thead>
     <tr>
-        <th class="col-cliente">Cliente</th>
-        <th class="col-data center">Data</th>
-        <th class="col-ore center">Ore</th>
-        <th class="col-min center">Min</th>
-        <th class="col-orario right">Orario (h)</th>
-        <th class="col-costo right">Costo (€)</th>
+        <th class="col-cliente">CLIENTE</th>
+        <th class="col-data center">DATA</th>
+        <th class="col-ore center">ORE</th>
+        <th class="col-min center">MIN</th>
+        <th class="col-orario right">ORARIO (h)</th>
+        <th class="col-costo right">COSTO (€)</th>
     </tr>
     </thead>
 
@@ -139,7 +145,7 @@
 
     <tfoot>
     <tr>
-        <td colspan="4" class="right">Totali</td>
+        <td colspan="4" class="right">TOTALI</td>
         <td class="right" th:text="${#numbers.formatDecimal(ts.totaleOrario, 1, 2, 'COMMA')}"></td>
         <td class="right" th:text="${#numbers.formatDecimal(ts.totaleCosto, 1, 2, 'COMMA')}"></td>
     </tr>

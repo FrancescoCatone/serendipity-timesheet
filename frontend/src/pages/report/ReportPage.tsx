@@ -17,6 +17,7 @@ import type {
 } from '../../types/report';
 import type { ProfiloUtenteDto, UtenteDto } from '../../types/utente';
 import { getCurrentUserRole } from '../../utils/auth';
+import { excludeAdminUsers, excludeNonLavoratoClienti } from '../../utils/entityFilters';
 import { getErrorMessage } from '../../utils/error';
 
 type UserOption = {
@@ -90,11 +91,11 @@ function ReportPage() {
                 setLoadingSupportData(true);
 
                 const clientiResponse = await getClientiApi();
-                setClienti(clientiResponse.data ?? []);
+                setClienti(excludeNonLavoratoClienti(clientiResponse.data ?? []));
 
                 if (isAdmin) {
                     const utentiResponse = await getUtentiApi();
-                    const utentiData = (utentiResponse.data ?? []) as UtenteDto[];
+                    const utentiData = excludeAdminUsers((utentiResponse.data ?? []) as UtenteDto[]);
 
                     setUtenti(
                         utentiData.map((utente) => ({

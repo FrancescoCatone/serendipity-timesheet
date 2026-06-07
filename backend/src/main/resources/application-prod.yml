@@ -24,7 +24,7 @@ logging:
 app:
   security:
     jwt-secret: ${JWT_SECRET}
-    jwt-expiration-ms: ${JWT_EXPIRATION_MS:36000000}
+    jwt-expiration-ms: ${JWT_EXPIRATION_MS:3600000}
     allowed-origins: ${APP_ALLOWED_ORIGINS:https://www.serendipity.it,https://serendipity.it}
   bootstrap-admin:
     enabled: ${APP_BOOTSTRAP_ADMIN_ENABLED:false}

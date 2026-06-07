@@ -18,6 +18,7 @@ import {
 } from '../../api/timesheetApi';
 import type { TimesheetDto, TotaleClienteDto, TotaliDto } from '../../types/timesheet.ts';
 import { getCurrentUserRole } from '../../utils/auth';
+import { excludeAdminUsers } from '../../utils/entityFilters';
 import { getErrorMessage } from '../../utils/error';
 
 type ConfirmAction = 'delete' | 'conferma' | 'riapri' | 'chiudi';
@@ -92,7 +93,7 @@ function TimesheetPage() {
 
         if (role === 'ADMIN') {
             const utentiResponse = await getUtentiApi();
-            const utenti = utentiResponse.data ?? [];
+            const utenti = excludeAdminUsers(utentiResponse.data ?? []);
 
             setUserOptions(
                 utenti.map((utente) => ({

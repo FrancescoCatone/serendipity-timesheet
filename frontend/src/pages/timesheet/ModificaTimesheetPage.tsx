@@ -16,6 +16,7 @@ import type { ClienteDto } from '../../types/cliente';
 import type { TimesheetStato } from '../../types/timesheet';
 import type { TimesheetRigaDto } from '../../types/timesheetRiga';
 import { getCurrentUserRole } from '../../utils/auth';
+import { excludeAdminUsers, NON_LAVORATO_CLIENT_NAME } from '../../utils/entityFilters';
 import { getErrorMessage } from '../../utils/error';
 import BackButton from '../../components/common/BackButton';
 import { isFestivoItaliano } from '../../utils/calendar';
@@ -24,8 +25,6 @@ type UserOption = {
     id: number;
     label: string;
 };
-
-const NON_LAVORATO_CLIENT_NAME = 'NON LAVORATO';
 
 type RigaFormState = {
     clienteId: string;
@@ -271,7 +270,7 @@ function ModificaTimesheetPage() {
                 if (role === 'ADMIN') {
                     asyncTasks.push(
                         getUtentiApi().then((utentiResponse) => {
-                            const utenti = utentiResponse.data ?? [];
+                            const utenti = excludeAdminUsers(utentiResponse.data ?? []);
                             setUserOptions(
                                 utenti.map((utente) => ({
                                     id: utente.id,
