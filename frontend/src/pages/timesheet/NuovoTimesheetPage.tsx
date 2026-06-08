@@ -5,7 +5,7 @@ import PageHeader from '../../components/common/PageHeader';
 import { createTimesheetApi } from '../../api/timesheetApi';
 import { getMyProfileApi, getUtentiApi } from '../../api/utentiApi';
 import { getCurrentUserRole } from '../../utils/auth';
-import { excludeAdminUsers } from '../../utils/entityFilters';
+import { excludeAdminUsers, sortUsersByDisplayName } from '../../utils/entityFilters';
 import { getErrorMessage } from '../../utils/error';
 import type { ProfiloUtenteDto } from '../../types/utente';
 
@@ -52,7 +52,7 @@ function NuovoTimesheetPage() {
 
                 if (role === 'ADMIN') {
                     const response = await getUtentiApi();
-                    const utenti = excludeAdminUsers(response.data ?? []);
+                    const utenti = sortUsersByDisplayName(excludeAdminUsers(response.data ?? []));
 
                     setUserOptions(
                         utenti.map((utente) => ({

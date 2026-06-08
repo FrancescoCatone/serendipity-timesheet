@@ -11,21 +11,21 @@ import type { UtenteDto } from '../../types/utente';
 
 function sortUtentiWithAdminsFirst(items: UtenteDto[]): UtenteDto[] {
     return [...items].sort((a, b) => {
-        const aIsAdmin = a.ruolo === 'ADMIN';
-        const bIsAdmin = b.ruolo === 'ADMIN';
+        const aIsAdmin = a.ruolo.trim().toUpperCase() === 'ADMIN';
+        const bIsAdmin = b.ruolo.trim().toUpperCase() === 'ADMIN';
 
         if (aIsAdmin !== bIsAdmin) {
             return aIsAdmin ? -1 : 1;
         }
 
-        const byCognome = a.cognome.localeCompare(b.cognome, 'it', { sensitivity: 'base' });
-        if (byCognome !== 0) {
-            return byCognome;
-        }
-
         const byNome = a.nome.localeCompare(b.nome, 'it', { sensitivity: 'base' });
         if (byNome !== 0) {
             return byNome;
+        }
+
+        const byCognome = a.cognome.localeCompare(b.cognome, 'it', { sensitivity: 'base' });
+        if (byCognome !== 0) {
+            return byCognome;
         }
 
         return a.email.localeCompare(b.email, 'it', { sensitivity: 'base' });

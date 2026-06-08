@@ -16,7 +16,7 @@ import type { ClienteDto } from '../../types/cliente';
 import type { TimesheetStato } from '../../types/timesheet';
 import type { TimesheetRigaDto } from '../../types/timesheetRiga';
 import { getCurrentUserRole } from '../../utils/auth';
-import { excludeAdminUsers, NON_LAVORATO_CLIENT_NAME } from '../../utils/entityFilters';
+import { excludeAdminUsers, NON_LAVORATO_CLIENT_NAME, sortClientiForTimesheetRows, sortUsersByDisplayName } from '../../utils/entityFilters';
 import { getErrorMessage } from '../../utils/error';
 import BackButton from '../../components/common/BackButton';
 import { isFestivoItaliano } from '../../utils/calendar';
@@ -194,7 +194,7 @@ function ModificaTimesheetPage() {
         try {
             setClientiLoading(true);
             const response = await getClientiApi();
-            setClienti(response.data ?? []);
+            setClienti(sortClientiForTimesheetRows(response.data ?? []));
         } catch (error: unknown) {
             setClienti([]);
             toast.error(getErrorMessage(error, 'Errore durante il caricamento dei clienti'));
@@ -272,7 +272,7 @@ function ModificaTimesheetPage() {
                 if (role === 'ADMIN') {
                     asyncTasks.push(
                         getUtentiApi().then((utentiResponse) => {
-                            const utenti = excludeAdminUsers(utentiResponse.data ?? []);
+                            const utenti = sortUsersByDisplayName(excludeAdminUsers(utentiResponse.data ?? []));
                             setUserOptions(
                                 utenti.map((utente) => ({
                                     id: utente.id,

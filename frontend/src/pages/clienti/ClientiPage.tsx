@@ -5,6 +5,7 @@ import PageHeader from '../../components/common/PageHeader';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
 import { deleteClienteApi, getClientiApi } from '../../api/clientiApi';
 import { getErrorMessage } from '../../utils/error';
+import { excludeNonLavoratoClienti } from '../../utils/entityFilters';
 import type { ClienteDto } from '../../types/cliente';
 
 function formatTariffaOraria(value: number): string {
@@ -28,9 +29,10 @@ function ClientiPage() {
             setLoading(true);
 
             const response = await getClientiApi();
+            const clientiVisibili = excludeNonLavoratoClienti(response.data ?? []);
 
-            setClienti(response.data ?? []);
-            setCount(response.data?.length ?? 0);
+            setClienti(clientiVisibili);
+            setCount(clientiVisibili.length);
         } catch (error: unknown) {
             toast.error(getErrorMessage(error, 'Errore durante il caricamento dei clienti'));
         } finally {
