@@ -9,14 +9,17 @@
         }
 
         body {
+            margin: 0;
             font-family: sans-serif;
             font-size: 10px;
             line-height: 1.25;
             color: #000;
-            margin: 0;
         }
 
-        /* Header principale (stile ex titolo Timesheet) */
+        body {
+            position: relative;
+        }
+
         .header-main {
             font-size: 15px;
             font-weight: bold;
@@ -103,57 +106,68 @@
             font-weight: bold;
             vertical-align: middle;
         }
-    </style>
 
+        .footer-logo {
+            position: absolute;
+            top: 247mm;
+            right: 8mm;
+            text-align: right;
+        }
+
+        .footer-logo img {
+            width: 34mm;
+            opacity: 0.12;
+        }
+    </style>
 </head>
 <body>
+<div class="page-content">
+    <div class="header-main">
+        <span th:text="${ts.utenteNomeCompleto}"></span>
+        &nbsp;&#183;&nbsp;
+        <span th:text="${ts.meseNome} + ' ' + ${ts.anno}"></span>
+        &nbsp;&#183;&nbsp;
+        Generato il <span th:text="${#temporals.format(ts.dataGenerazione, 'dd/MM/yyyy HH:mm')}"></span>
+    </div>
 
-<!-- Header compatto -->
-<div class="header-main">
-    <span th:text="${ts.utenteNomeCompleto}"></span>
-    &nbsp;·&nbsp;
-    <span th:text="${ts.meseNome} + ' ' + ${ts.anno}"></span>
-    &nbsp;·&nbsp;
-    Generato il <span th:text="${#temporals.format(ts.dataGenerazione, 'dd/MM/yyyy HH:mm')}"></span>
+    <table>
+        <thead>
+        <tr>
+            <th class="col-cliente">CLIENTE</th>
+            <th class="col-data center">DATA</th>
+            <th class="col-ore center">ORE</th>
+            <th class="col-min center">MIN</th>
+            <th class="col-orario right">ORARIO (H)</th>
+            <th class="col-costo right">COSTO (&#8364;)</th>
+        </tr>
+        </thead>
+
+        <tbody>
+        <tr th:each="r : ${ts.righe}" th:classappend="${r.festivo} ? 'festivo-row' : ''">
+            <td>
+                <span th:text="${r.clienteNome}"></span>
+                <span th:if="${r.festivo}" class="festivo-badge">Festivo</span>
+            </td>
+            <td class="center" th:text="${#temporals.format(r.data, 'dd/MM/yyyy')}"></td>
+            <td class="center" th:text="${r.ore}"></td>
+            <td class="center" th:text="${r.minuti}"></td>
+            <td class="right" th:text="${#numbers.formatDecimal(r.orario, 1, 2, 'COMMA')}"></td>
+            <td class="right" th:text="${#numbers.formatDecimal(r.costoOrario, 1, 2, 'COMMA')}"></td>
+        </tr>
+        </tbody>
+
+        <tfoot>
+        <tr>
+            <td colspan="4" class="right">TOTALI</td>
+            <td class="right" th:text="${#numbers.formatDecimal(ts.totaleOrario, 1, 2, 'COMMA')}"></td>
+            <td class="right" th:text="${#numbers.formatDecimal(ts.totaleCosto, 1, 2, 'COMMA')}"></td>
+        </tr>
+        </tfoot>
+    </table>
+
 </div>
-
-<!-- Tabella -->
-<table>
-    <thead>
-    <tr>
-        <th class="col-cliente">CLIENTE</th>
-        <th class="col-data center">DATA</th>
-        <th class="col-ore center">ORE</th>
-        <th class="col-min center">MIN</th>
-        <th class="col-orario right">ORARIO (H)</th>
-        <th class="col-costo right">COSTO (€)</th>
-    </tr>
-    </thead>
-
-    <tbody>
-    <tr th:each="r : ${ts.righe}" th:classappend="${r.festivo} ? 'festivo-row' : ''">
-        <td>
-            <span th:text="${r.clienteNome}"></span>
-            <span th:if="${r.festivo}" class="festivo-badge">Festivo</span>
-        </td>
-        <td class="center" th:text="${#temporals.format(r.data, 'dd/MM/yyyy')}"></td>
-        <td class="center" th:text="${r.ore}"></td>
-        <td class="center" th:text="${r.minuti}"></td>
-        <td class="right"
-            th:text="${#numbers.formatDecimal(r.orario, 1, 2, 'COMMA')}"></td>
-        <td class="right"
-            th:text="${#numbers.formatDecimal(r.costoOrario, 1, 2, 'COMMA')}"></td>
-    </tr>
-    </tbody>
-
-    <tfoot>
-    <tr>
-        <td colspan="4" class="right">TOTALI</td>
-        <td class="right" th:text="${#numbers.formatDecimal(ts.totaleOrario, 1, 2, 'COMMA')}"></td>
-        <td class="right" th:text="${#numbers.formatDecimal(ts.totaleCosto, 1, 2, 'COMMA')}"></td>
-    </tr>
-    </tfoot>
-</table>
-
+<div class="footer-logo" th:if="${logoDataUri != null}">
+    <img th:src="${logoDataUri}" alt="Logo Serendipity"/>
+</div>
 </body>
 </html>
