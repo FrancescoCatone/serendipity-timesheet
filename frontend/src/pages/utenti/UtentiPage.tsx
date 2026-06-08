@@ -6,11 +6,18 @@ import ConfirmDialog from '../../components/common/ConfirmDialog';
 import { deleteUtenteApi, getUtentiApi } from '../../api/utentiApi';
 import { getCurrentUserProfile } from '../../utils/auth';
 import { getErrorMessage } from '../../utils/error';
-import { isSystemOperatorEmail } from '../../utils/systemUsers';
+import { isSystemOperatorEmail, SYSTEM_OPERATOR_EMAIL } from '../../utils/systemUsers';
 import type { UtenteDto } from '../../types/utente';
 
 function sortUtentiWithAdminsFirst(items: UtenteDto[]): UtenteDto[] {
     return [...items].sort((a, b) => {
+        const aIsSystemOperator = a.email.trim().toLowerCase() === SYSTEM_OPERATOR_EMAIL;
+        const bIsSystemOperator = b.email.trim().toLowerCase() === SYSTEM_OPERATOR_EMAIL;
+
+        if (aIsSystemOperator !== bIsSystemOperator) {
+            return aIsSystemOperator ? -1 : 1;
+        }
+
         const aIsAdmin = a.ruolo.trim().toUpperCase() === 'ADMIN';
         const bIsAdmin = b.ruolo.trim().toUpperCase() === 'ADMIN';
 
