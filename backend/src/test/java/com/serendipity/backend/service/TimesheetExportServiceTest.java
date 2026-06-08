@@ -94,7 +94,7 @@ class TimesheetExportServiceTest {
         // imposta un utente ADMIN nel SecurityContext:
         // currentUserIsAdmin() → true, quindi getCurrentUserId() non viene mai chiamato
         var auth = new UsernamePasswordAuthenticationToken(
-                "admin@serendipity.com",
+                "raffaele.vermiglio@serendipitycoop.it",
                 null,
                 List.of(new SimpleGrantedAuthority("ROLE_ADMIN"))
         );
@@ -223,7 +223,7 @@ class TimesheetExportServiceTest {
         owner.setId(999L);
         owner.setNome("Admin");
         owner.setCognome("Test");
-        owner.setEmail("admin@serendipity.com");
+        owner.setEmail("raffaele.vermiglio@serendipitycoop.it");
 
         Utente currentUser = new Utente();
         currentUser.setId(200L);

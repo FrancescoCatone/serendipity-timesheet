@@ -58,12 +58,12 @@ class ReportControllerIntegrationTest {
 
     @BeforeEach
     void setUp() {
-        admin = utenteRepository.findByEmail("admin@serendipity.com").orElseGet(() -> {
+        admin = utenteRepository.findByEmail("raffaele.vermiglio@serendipitycoop.it").orElseGet(() -> {
             Utente u = new Utente();
             u.setCodiceFiscale("ADMNTST85T10A562Z");
             u.setNome("Admin");
             u.setCognome("Test");
-            u.setEmail("admin@serendipity.com");
+            u.setEmail("raffaele.vermiglio@serendipitycoop.it");
             u.setPassword(passwordEncoder.encode("AdminTest123!"));
             u.setRuolo(Ruolo.ADMIN);
             return utenteRepository.save(u);
@@ -137,7 +137,7 @@ class ReportControllerIntegrationTest {
     /* ====================== REPORT CLIENTE ====================== */
 
     @Test
-    @WithMockUser(username = "admin@serendipity.com", roles = "ADMIN")
+    @WithMockUser(username = "raffaele.vermiglio@serendipitycoop.it", roles = "ADMIN")
     void reportCliente_ok_asAdmin() throws Exception {
         Timesheet ts1 = persistTimesheet(dipendente, 3, 2026, TimesheetStato.APERTO);
         Timesheet ts2 = persistTimesheet(altroDipendente, 3, 2026, TimesheetStato.APERTO);
@@ -171,7 +171,7 @@ class ReportControllerIntegrationTest {
     }
 
     @Test
-    @WithMockUser(username = "admin@serendipity.com", roles = "ADMIN")
+    @WithMockUser(username = "raffaele.vermiglio@serendipitycoop.it", roles = "ADMIN")
     void reportCliente_notFound() throws Exception {
         mockMvc.perform(get("/api/report/cliente")
                         .param("clienteId", "999999")
@@ -181,7 +181,7 @@ class ReportControllerIntegrationTest {
     }
 
     @Test
-    @WithMockUser(username = "admin@serendipity.com", roles = "ADMIN")
+    @WithMockUser(username = "raffaele.vermiglio@serendipitycoop.it", roles = "ADMIN")
     void reportCliente_badRequest_invalidMese() throws Exception {
         mockMvc.perform(get("/api/report/cliente")
                         .param("clienteId", clienteA.getId().toString())
@@ -191,7 +191,7 @@ class ReportControllerIntegrationTest {
     }
 
     @Test
-    @WithMockUser(username = "admin@serendipity.com", roles = "ADMIN")
+    @WithMockUser(username = "raffaele.vermiglio@serendipitycoop.it", roles = "ADMIN")
     void reportClienteGiorno_ok_asAdmin() throws Exception {
         Timesheet ts1 = persistTimesheet(dipendente, 3, 2026, TimesheetStato.APERTO);
         Timesheet ts2 = persistTimesheet(altroDipendente, 3, 2026, TimesheetStato.APERTO);
@@ -226,7 +226,7 @@ class ReportControllerIntegrationTest {
     /* ====================== REPORT DIPENDENTE ====================== */
 
     @Test
-    @WithMockUser(username = "admin@serendipity.com", roles = "ADMIN")
+    @WithMockUser(username = "raffaele.vermiglio@serendipitycoop.it", roles = "ADMIN")
     void reportDipendente_ok_asAdmin() throws Exception {
         Timesheet ts = persistTimesheet(dipendente, 3, 2026, TimesheetStato.APERTO);
 
@@ -277,7 +277,7 @@ class ReportControllerIntegrationTest {
     }
 
     @Test
-    @WithMockUser(username = "admin@serendipity.com", roles = "ADMIN")
+    @WithMockUser(username = "raffaele.vermiglio@serendipitycoop.it", roles = "ADMIN")
     void reportDipendente_notFound() throws Exception {
         mockMvc.perform(get("/api/report/dipendente")
                         .param("utenteId", "999999")
@@ -287,7 +287,7 @@ class ReportControllerIntegrationTest {
     }
 
     @Test
-    @WithMockUser(username = "admin@serendipity.com", roles = "ADMIN")
+    @WithMockUser(username = "raffaele.vermiglio@serendipitycoop.it", roles = "ADMIN")
     void reportDipendente_badRequest_invalidAnno() throws Exception {
         mockMvc.perform(get("/api/report/dipendente")
                         .param("utenteId", dipendente.getId().toString())
@@ -296,3 +296,4 @@ class ReportControllerIntegrationTest {
                 .andExpect(status().isBadRequest());
     }
 }
+

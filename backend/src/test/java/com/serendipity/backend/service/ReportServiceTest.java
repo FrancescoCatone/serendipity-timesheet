@@ -57,7 +57,7 @@ class ReportServiceTest {
         admin.setId(1L);
         admin.setNome("Admin");
         admin.setCognome("Test");
-        admin.setEmail("admin@serendipity.com");
+        admin.setEmail("raffaele.vermiglio@serendipitycoop.it");
 
         dipendente = new Utente();
         dipendente.setId(2L);

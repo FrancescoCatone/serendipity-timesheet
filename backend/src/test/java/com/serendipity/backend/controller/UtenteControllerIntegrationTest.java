@@ -284,7 +284,7 @@ public class UtenteControllerIntegrationTest {
         dto.setNome("Updated");
 
         mockMvc.perform(put("/api/utenti/{id}", id)
-                        .with(user("admin@serendipitycoop.it").roles("ADMIN"))
+                        .with(user("raffaele.vermiglio@serendipitycoop.it").roles("ADMIN"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(dto)))
                 .andExpect(status().isForbidden());

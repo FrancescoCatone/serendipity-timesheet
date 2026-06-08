@@ -71,13 +71,13 @@ public class TimesheetControllerIntegrationTest {
 
     @BeforeEach
     void setUp() {
-        // admin coerente con @WithMockUser(username="admin@serendipity.com")
-        admin = utenteRepository.findByEmail("admin@serendipity.com").orElseGet(() -> {
+        // admin coerente con @WithMockUser(username="raffaele.vermiglio@serendipitycoop.it")
+        admin = utenteRepository.findByEmail("raffaele.vermiglio@serendipitycoop.it").orElseGet(() -> {
             Utente u = new Utente();
             u.setCodiceFiscale("ADMNTST85T10A562Z");
             u.setNome("Admin");
             u.setCognome("Test");
-            u.setEmail("admin@serendipity.com");
+            u.setEmail("raffaele.vermiglio@serendipitycoop.it");
             u.setPassword(passwordEncoder.encode("AdminTest123!"));
             u.setRuolo(Ruolo.ADMIN);
             return utenteRepository.save(u);
@@ -126,7 +126,7 @@ public class TimesheetControllerIntegrationTest {
     /* ======================= GET /api/timesheets ======================= */
 
     @Test
-    @WithMockUser(username = "admin@serendipity.com", roles = "ADMIN")
+    @WithMockUser(username = "raffaele.vermiglio@serendipitycoop.it", roles = "ADMIN")
     void getAll_asAdmin_ok() throws Exception {
         mockMvc.perform(get("/api/timesheets"))
                 .andExpect(status().isOk())
@@ -163,7 +163,7 @@ public class TimesheetControllerIntegrationTest {
     /* ======================= POST /api/timesheets ======================= */
 
     @Test
-    @WithMockUser(username = "admin@serendipity.com", roles = "ADMIN")
+    @WithMockUser(username = "raffaele.vermiglio@serendipitycoop.it", roles = "ADMIN")
     void create_asAdmin_ok() throws Exception {
         CreaTimesheetDto dto = buildTsDto(9, 2025, dipendente.getId());
 
@@ -180,7 +180,7 @@ public class TimesheetControllerIntegrationTest {
     /* ======================= GET /api/timesheets/{id} ======================= */
 
     @Test
-    @WithMockUser(username = "admin@serendipity.com", roles = "ADMIN")
+    @WithMockUser(username = "raffaele.vermiglio@serendipitycoop.it", roles = "ADMIN")
     void getById_admin_ok() throws Exception {
         Timesheet ts = new Timesheet();
         ts.setAnno(2025);
@@ -210,7 +210,7 @@ public class TimesheetControllerIntegrationTest {
     /* ======================= PUT /api/timesheets/{id} ======================= */
 
     @Test
-    @WithMockUser(username = "admin@serendipity.com", roles = "ADMIN")
+    @WithMockUser(username = "raffaele.vermiglio@serendipitycoop.it", roles = "ADMIN")
     void update_conflictWhenChiuso() throws Exception {
         Timesheet ts = new Timesheet();
         ts.setAnno(2025);
@@ -229,7 +229,7 @@ public class TimesheetControllerIntegrationTest {
     }
 
     @Test
-    @WithMockUser(username = "admin@serendipity.com", roles = {"ADMIN"})
+    @WithMockUser(username = "raffaele.vermiglio@serendipitycoop.it", roles = {"ADMIN"})
     void update_ok_asAdmin() throws Exception {
         // Timesheet in stato APERTO → modificabile
         Timesheet ts = new Timesheet();
@@ -298,7 +298,7 @@ public class TimesheetControllerIntegrationTest {
     }
 
     @Test
-    @WithMockUser(username = "admin@serendipity.com", roles = "ADMIN")
+    @WithMockUser(username = "raffaele.vermiglio@serendipitycoop.it", roles = "ADMIN")
     void update_conflictWhenConfermato() throws Exception {
         Timesheet ts = new Timesheet();
         ts.setAnno(2025);
@@ -320,7 +320,7 @@ public class TimesheetControllerIntegrationTest {
     /* ======================= DELETE /api/timesheets/{id} ======================= */
 
     @Test
-    @WithMockUser(username = "admin@serendipity.com", roles = "ADMIN")
+    @WithMockUser(username = "raffaele.vermiglio@serendipitycoop.it", roles = "ADMIN")
     void delete_asAdmin_ok() throws Exception {
         Timesheet ts = new Timesheet();
         ts.setAnno(2025);
@@ -334,7 +334,7 @@ public class TimesheetControllerIntegrationTest {
     }
 
     @Test
-    @WithMockUser(username = "admin@serendipity.com", roles = "ADMIN")
+    @WithMockUser(username = "raffaele.vermiglio@serendipitycoop.it", roles = "ADMIN")
     void delete_asAdmin_alsoDeletesRelatedRows() throws Exception {
         Timesheet ts = new Timesheet();
         ts.setAnno(2025);
@@ -384,7 +384,7 @@ public class TimesheetControllerIntegrationTest {
     /* ======================= GET /api/timesheets/search ======================= */
 
     @Test
-    @WithMockUser(username = "admin@serendipity.com", roles = "ADMIN")
+    @WithMockUser(username = "raffaele.vermiglio@serendipitycoop.it", roles = "ADMIN")
     void search_asAdmin_withAndWithoutUserId() throws Exception {
         // due TS in 04/2025: uno per dipendente, uno per admin
         Timesheet a = new Timesheet();
@@ -451,7 +451,7 @@ public class TimesheetControllerIntegrationTest {
     /* ======================= GET /api/timesheets/anni & /mesi ======================= */
 
     @Test
-    @WithMockUser(username = "admin@serendipity.com", roles = "ADMIN")
+    @WithMockUser(username = "raffaele.vermiglio@serendipitycoop.it", roles = "ADMIN")
     void anniEMesi_ok() throws Exception {
         Timesheet t1 = new Timesheet();
         t1.setAnno(2024);
@@ -536,7 +536,7 @@ public class TimesheetControllerIntegrationTest {
 
 
     @Test
-    @WithMockUser(username = "admin@serendipity.com", roles = "ADMIN")
+    @WithMockUser(username = "raffaele.vermiglio@serendipitycoop.it", roles = "ADMIN")
     void riapri_conflictIfAlreadyAperto() throws Exception {
         Timesheet ts = new Timesheet();
         ts.setAnno(2025);
@@ -551,7 +551,7 @@ public class TimesheetControllerIntegrationTest {
     }
 
     @Test
-    @WithMockUser(username = "admin@serendipity.com", roles = "ADMIN")
+    @WithMockUser(username = "raffaele.vermiglio@serendipitycoop.it", roles = "ADMIN")
     void riapri_fromChiuso_asAdmin_ok() throws Exception {
         Timesheet ts = new Timesheet();
         ts.setAnno(2025);
@@ -583,7 +583,7 @@ public class TimesheetControllerIntegrationTest {
     }
 
     @Test
-    @WithMockUser(username = "admin@serendipity.com", roles = "ADMIN")
+    @WithMockUser(username = "raffaele.vermiglio@serendipitycoop.it", roles = "ADMIN")
     void chiudi_okIfConfermato() throws Exception {
         Timesheet ts = new Timesheet();
         ts.setAnno(2025);
@@ -607,7 +607,7 @@ public class TimesheetControllerIntegrationTest {
     /* ======================= GET /api/timesheets/{id}/totali ======================= */
 
     @Test
-    @WithMockUser(username = "admin@serendipity.com", roles = "ADMIN")
+    @WithMockUser(username = "raffaele.vermiglio@serendipitycoop.it", roles = "ADMIN")
     void totali_overallAndPerCliente_ok() throws Exception {
         // TS + due clienti + 2 righe
         Timesheet ts = new Timesheet();
@@ -664,3 +664,4 @@ public class TimesheetControllerIntegrationTest {
                 .andExpect(jsonPath("$.data[1].clienteNome").value("Globex"));
     }
 }
+

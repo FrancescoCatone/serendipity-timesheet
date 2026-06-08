@@ -38,10 +38,10 @@ class AuthControllerTest {
     @Test
     void login_ok_returnsJwt() throws Exception {
         var req = new AuthRequest();
-        req.setEmail("admin@serendipity.com");
+        req.setEmail("raffaele.vermiglio@serendipitycoop.it");
         req.setPassword("AdminTest123!");
 
-        var userDetails = User.withUsername("admin@serendipity.com").password("x").roles("ADMIN").build();
+        var userDetails = User.withUsername("raffaele.vermiglio@serendipitycoop.it").password("x").roles("ADMIN").build();
         var authResult = new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
 
         when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))

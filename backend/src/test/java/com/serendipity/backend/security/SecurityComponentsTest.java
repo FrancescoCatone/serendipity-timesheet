@@ -90,14 +90,14 @@ class SecurityComponentsTest {
     @DisplayName("loadUserByUsername ritorna UtenteUserDetails se utente esiste")
     void userDetailsService_loadUserByUsername_ok() {
         Utente u = new Utente();
-        u.setEmail("admin@serendipity.com");
+        u.setEmail("raffaele.vermiglio@serendipitycoop.it");
         u.setPassword("encodedPass");
         u.setRuolo(Ruolo.ADMIN);
-        when(utenteRepository.findByEmail("admin@serendipity.com")).thenReturn(Optional.of(u));
+        when(utenteRepository.findByEmail("raffaele.vermiglio@serendipitycoop.it")).thenReturn(Optional.of(u));
 
-        var details = userDetailsService.loadUserByUsername("admin@serendipity.com");
+        var details = userDetailsService.loadUserByUsername("raffaele.vermiglio@serendipitycoop.it");
 
-        assertEquals("admin@serendipity.com", details.getUsername());
+        assertEquals("raffaele.vermiglio@serendipitycoop.it", details.getUsername());
         assertTrue(details.getAuthorities().stream()
                 .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN")));
     }

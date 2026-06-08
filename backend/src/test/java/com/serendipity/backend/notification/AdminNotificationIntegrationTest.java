@@ -46,7 +46,7 @@ class AdminNotificationIntegrationTest {
     @DynamicPropertySource
     static void registerMailProperties(DynamicPropertyRegistry registry) {
         registry.add("app.notifications.enabled", () -> "true");
-        registry.add("app.notifications.recipient-email", () -> "admin@serendipitycoop.it");
+        registry.add("app.notifications.recipient-email", () -> "raffaele.vermiglio@serendipitycoop.it");
         registry.add("app.notifications.from-email", () -> "noreply@serendipitycoop.it");
         registry.add("app.notifications.subject-prefix", () -> "Serendipity");
         registry.add("spring.mail.host", () -> "127.0.0.1");
@@ -76,7 +76,7 @@ class AdminNotificationIntegrationTest {
     }
 
     @Test
-    @WithMockUser(username = "admin@serendipitycoop.it", roles = "ADMIN")
+    @WithMockUser(username = "raffaele.vermiglio@serendipitycoop.it", roles = "ADMIN")
     void creaUtente_inviaNotificaEmail() throws Exception {
         CreaUtenteDto dto = new CreaUtenteDto();
         dto.setNome("Mario");
@@ -94,15 +94,15 @@ class AdminNotificationIntegrationTest {
         MimeMessage[] messages = greenMail.getReceivedMessages();
         assertThat(messages).hasSize(1);
         assertThat(messages[0].getSubject()).isEqualTo("Serendipity - Utente creato");
-        assertThat(messages[0].getAllRecipients()[0].toString()).isEqualTo("admin@serendipitycoop.it");
+        assertThat(messages[0].getAllRecipients()[0].toString()).isEqualTo("raffaele.vermiglio@serendipitycoop.it");
         assertThat(messages[0].getContent().toString())
                 .contains("Operazione: Creazione utente")
-                .contains("Eseguita da: admin@serendipitycoop.it")
+                .contains("Eseguita da: raffaele.vermiglio@serendipitycoop.it")
                 .contains("mario.rossi@serendipity.com");
     }
 
     @Test
-    @WithMockUser(username = "admin@serendipitycoop.it", roles = "ADMIN")
+    @WithMockUser(username = "raffaele.vermiglio@serendipitycoop.it", roles = "ADMIN")
     void creaCliente_inviaNotificaEmail() throws Exception {
         CreaClienteDto dto = new CreaClienteDto();
         dto.setNome("Acme S.p.A.");
@@ -123,7 +123,7 @@ class AdminNotificationIntegrationTest {
     }
 
     @Test
-    @WithMockUser(username = "admin@serendipitycoop.it", roles = "ADMIN")
+    @WithMockUser(username = "raffaele.vermiglio@serendipitycoop.it", roles = "ADMIN")
     void eliminaTimesheet_inviaNotificaEmail() throws Exception {
         Utente dipendente = utenteRepository.findByEmail("user@serendipity.com").orElseGet(() -> {
             Utente u = new Utente();

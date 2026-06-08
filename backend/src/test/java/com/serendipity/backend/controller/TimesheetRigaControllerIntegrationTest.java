@@ -67,12 +67,12 @@ public class TimesheetRigaControllerIntegrationTest {
     @BeforeEach
     void setUp() {
         // Assicuro admin coerente con @WithMockUser
-        admin = utenteRepository.findByEmail("admin@serendipity.com").orElseGet(() -> {
+        admin = utenteRepository.findByEmail("raffaele.vermiglio@serendipitycoop.it").orElseGet(() -> {
             Utente u = new Utente();
             u.setCodiceFiscale("ADMNTST85T10A562Z");
             u.setNome("Admin");
             u.setCognome("Test");
-            u.setEmail("admin@serendipity.com");
+            u.setEmail("raffaele.vermiglio@serendipitycoop.it");
             u.setPassword(passwordEncoder.encode("AdminTest123!"));
             u.setRuolo(Ruolo.ADMIN);
             return utenteRepository.save(u);
@@ -147,7 +147,7 @@ public class TimesheetRigaControllerIntegrationTest {
     /* ===================== GET /api/timesheet-righe ===================== */
 
     @Test
-    @WithMockUser(username = "admin@serendipity.com", roles = "ADMIN")
+    @WithMockUser(username = "raffaele.vermiglio@serendipitycoop.it", roles = "ADMIN")
     void getAll_asAdmin_ok() throws Exception {
         // 2 righe: 1 dell'user, 1 dell'admin
         TimesheetRiga r1 = new TimesheetRiga();
@@ -314,7 +314,7 @@ public class TimesheetRigaControllerIntegrationTest {
     }
 
     @Test
-    @WithMockUser(username = "admin@serendipity.com", roles = "ADMIN")
+    @WithMockUser(username = "raffaele.vermiglio@serendipitycoop.it", roles = "ADMIN")
     void create_conflict_onTsConfermato_asAdmin() throws Exception {
         CreaTimesheetRigaDto dto = buildRigaDto(
                 tsUserConfermato.getId(), clienteB.getId(),
@@ -417,7 +417,7 @@ public class TimesheetRigaControllerIntegrationTest {
     }
 
     @Test
-    @WithMockUser(username = "admin@serendipity.com", roles = "ADMIN")
+    @WithMockUser(username = "raffaele.vermiglio@serendipitycoop.it", roles = "ADMIN")
     void update_conflict_onConfermato_asAdmin() throws Exception {
         TimesheetRiga r = new TimesheetRiga();
         r.setTimesheet(tsUserConfermato);
@@ -483,7 +483,7 @@ public class TimesheetRigaControllerIntegrationTest {
     /* ===================== GET /api/timesheet-righe/filter ===================== */
 
     @Test
-    @WithMockUser(username = "admin@serendipity.com", roles = "ADMIN")
+    @WithMockUser(username = "raffaele.vermiglio@serendipitycoop.it", roles = "ADMIN")
     void filter_asAdmin_byClienteUserDate() throws Exception {
         // righe varie
         TimesheetRiga r1 = new TimesheetRiga();
@@ -561,3 +561,4 @@ public class TimesheetRigaControllerIntegrationTest {
                 .andExpect(status().isNotFound());
     }
 }
+
