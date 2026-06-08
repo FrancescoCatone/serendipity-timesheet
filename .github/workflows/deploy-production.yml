@@ -27,6 +27,12 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
+      - name: Make scripts executable
+        run: |
+          chmod +x backend/mvnw
+          chmod +x ops/create-deploy-bundle.sh
+          chmod +x ops/deploy-production-release.sh
+
       - name: Run backend tests
         working-directory: backend
         run: ./mvnw test
