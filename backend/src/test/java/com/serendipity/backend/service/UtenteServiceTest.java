@@ -6,6 +6,7 @@ import com.serendipity.backend.model.dto.create.CreaUtenteDto;
 import com.serendipity.backend.model.dto.update.AggiornaPasswordDto;
 import com.serendipity.backend.model.entity.Utente;
 import com.serendipity.backend.model.enums.Ruolo;
+import com.serendipity.backend.repository.TimesheetRepository;
 import com.serendipity.backend.repository.UtenteRepository;
 import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.AfterEach;
@@ -45,6 +46,8 @@ class UtenteServiceTest {
     private PasswordEncoder passwordEncoder;
     @Mock
     private UtenteMapper utenteMapper;
+    @Mock
+    private TimesheetRepository timesheetRepository;
     @Mock
     private AdminNotificationService notificationService;
 
@@ -319,9 +322,21 @@ class UtenteServiceTest {
     @Test
     void eliminaUtente_ok_deletes() {
         when(utenteRepository.findById(9L)).thenReturn(Optional.of(ent(9L, "mario@acme.it", "RSSMRA85T10A562S", Ruolo.DIPENDENTE)));
+        when(timesheetRepository.existsByUtenteId(9L)).thenReturn(false);
         var resp = service.eliminaUtente(9L);
         assertThat(resp.getStatus()).isEqualTo(200);
         verify(utenteRepository).deleteById(9L);
+    }
+
+    @Test
+    void eliminaUtente_conTimesheetAssociati_conflict409() {
+        when(utenteRepository.findById(9L)).thenReturn(Optional.of(ent(9L, "mario@acme.it", "RSSMRA85T10A562S", Ruolo.DIPENDENTE)));
+        when(timesheetRepository.existsByUtenteId(9L)).thenReturn(true);
+
+        assertThatThrownBy(() -> service.eliminaUtente(9L))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("timesheet associati");
+        verify(utenteRepository, never()).deleteById(anyLong());
     }
 
     @Test

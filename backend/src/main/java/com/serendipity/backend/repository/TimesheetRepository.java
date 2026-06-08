@@ -11,6 +11,8 @@ import java.util.List;
 @Repository
 public interface TimesheetRepository extends JpaRepository<Timesheet, Long> {
 
+    boolean existsByUtenteId(Long utenteId);
+
     boolean existsByUtenteIdAndMeseAndAnno(Long utenteId, int mese, int anno);
 
     List<Timesheet> findByUtenteIdOrderByAnnoAscMeseAsc(Long utenteId);

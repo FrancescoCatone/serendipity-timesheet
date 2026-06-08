@@ -8,6 +8,7 @@ import com.serendipity.backend.model.dto.create.CreaUtenteDto;
 import com.serendipity.backend.model.dto.update.AggiornaPasswordDto;
 import com.serendipity.backend.model.entity.Utente;
 import com.serendipity.backend.model.enums.Ruolo;
+import com.serendipity.backend.repository.TimesheetRepository;
 import com.serendipity.backend.repository.UtenteRepository;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,6 +40,9 @@ public class UtenteService {
 
     @Autowired
     private UtenteMapper utenteMapper;
+
+    @Autowired
+    private TimesheetRepository timesheetRepository;
 
     @Autowired
     private AdminNotificationService notificationService;
@@ -164,6 +168,9 @@ public class UtenteService {
         Utente utente = utenteRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Utente non trovato"));
         ensureCurrentUserCanManage(utente);
+        if (timesheetRepository.existsByUtenteId(id)) {
+            throw new IllegalStateException("Non puoi eliminare un utente che ha timesheet associati.");
+        }
         Utente snapshot = snapshotUtente(utente);
 
         utenteRepository.deleteById(id);
