@@ -24,6 +24,8 @@ services:
         condition: service_healthy
     environment:
       SPRING_PROFILES_ACTIVE: prod
+      TZ: Europe/Rome
+      JAVA_TOOL_OPTIONS: -Duser.timezone=Europe/Rome
       SERVER_PORT: ${SERVER_PORT}
       DB_URL: jdbc:postgresql://db:5432/${POSTGRES_DB}
       DB_USERNAME: ${POSTGRES_USER}
