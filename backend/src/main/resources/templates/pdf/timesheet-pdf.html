@@ -103,17 +103,6 @@
             vertical-align: middle;
         }
 
-        .footer-logo {
-            position: fixed;
-            right: 8mm;
-            bottom: 4mm;
-            text-align: right;
-        }
-
-        .footer-logo img {
-            width: 34mm;
-            opacity: 0.12;
-        }
     </style>
 </head>
 <body>
@@ -160,10 +149,6 @@
         </tr>
         </tfoot>
     </table>
-
-    <div class="footer-logo" th:if="${logoDataUri != null}">
-        <img th:src="${logoDataUri}" alt="Logo Serendipity"/>
-    </div>
 </div>
 </body>
 </html>
