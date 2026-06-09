@@ -13,6 +13,7 @@ import com.serendipity.backend.repository.ClienteRepository;
 import com.serendipity.backend.repository.TimesheetRepository;
 import com.serendipity.backend.repository.TimesheetRigaRepository;
 import com.serendipity.backend.repository.UtenteRepository;
+import com.serendipity.backend.support.SystemClienti;
 import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -283,6 +284,65 @@ public class TimesheetRigaControllerIntegrationTest {
                 .andExpect(jsonPath("$.message").value("Riga creata"))
                 .andExpect(jsonPath("$.data.timesheetId").value(tsUserAperto.getId().intValue()))
                 .andExpect(jsonPath("$.data.clienteId").value(clienteA.getId().intValue()));
+    }
+
+    @Test
+    @WithMockUser(username = "user@serendipity.com", roles = "DIPENDENTE")
+    void create_sameClientSameDay_mergesIntoExistingRow() throws Exception {
+        TimesheetRiga existing = new TimesheetRiga();
+        existing.setTimesheet(tsUserAperto);
+        existing.setCliente(clienteA);
+        existing.setData(LocalDate.of(2025, 10, 6));
+        existing.setOre(2);
+        existing.setMinuti(15);
+        existing.setOrario(2.25);
+        existing.setCostoOrario(27.0);
+        existing = rigaRepository.save(existing);
+
+        CreaTimesheetRigaDto dto = buildRigaDto(
+                tsUserAperto.getId(), clienteA.getId(),
+                LocalDate.of(2025, 10, 6), 1, 45);
+
+        mockMvc.perform(post("/api/timesheet-righe")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(dto)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.id").value(existing.getId().intValue()))
+                .andExpect(jsonPath("$.data.ore").value(4))
+                .andExpect(jsonPath("$.data.minuti").value(0));
+
+        assertThat(rigaRepository.findByTimesheetIdOrdered(tsUserAperto.getId()))
+                .filteredOn(riga -> LocalDate.of(2025, 10, 6).equals(riga.getData()))
+                .hasSize(1);
+    }
+
+    @Test
+    @WithMockUser(username = "user@serendipity.com", roles = "DIPENDENTE")
+    void create_rejectsWorkingRowWhenNonLavoratoExists() throws Exception {
+        Cliente nonLavorato = new Cliente();
+        nonLavorato.setNome(SystemClienti.NON_LAVORATO);
+        nonLavorato.setTariffaOraria(0);
+        nonLavorato = clienteRepository.save(nonLavorato);
+
+        TimesheetRiga existing = new TimesheetRiga();
+        existing.setTimesheet(tsUserAperto);
+        existing.setCliente(nonLavorato);
+        existing.setData(LocalDate.of(2025, 10, 7));
+        existing.setOre(0);
+        existing.setMinuti(0);
+        existing.setOrario(0);
+        existing.setCostoOrario(0);
+        rigaRepository.save(existing);
+
+        CreaTimesheetRigaDto dto = buildRigaDto(
+                tsUserAperto.getId(), clienteA.getId(),
+                LocalDate.of(2025, 10, 7), 2, 0);
+
+        mockMvc.perform(post("/api/timesheet-righe")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(dto)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("NON LAVORATO")));
     }
 
     @Test

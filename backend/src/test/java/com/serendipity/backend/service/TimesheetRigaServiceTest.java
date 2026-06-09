@@ -360,6 +360,108 @@ class TimesheetRigaServiceTest {
     }
 
     @Test
+    void save_sameClientSameDay_mergesExistingRow() {
+        authAsUser();
+
+        TimesheetRiga existing = new TimesheetRiga();
+        existing.setId(900L);
+        existing.setTimesheet(tsUserAperto);
+        existing.setCliente(c1);
+        existing.setData(LocalDate.of(2025, 10, 16));
+        existing.setOre(2);
+        existing.setMinuti(45);
+
+        CreaTimesheetRigaDto dto = new CreaTimesheetRigaDto();
+        dto.setTimesheetId(tsUserAperto.getId());
+        dto.setClienteId(c1.getId());
+        dto.setData(LocalDate.of(2025, 10, 16));
+        dto.setOre(1);
+        dto.setMinuti(30);
+
+        when(timesheetRepository.findById(tsUserAperto.getId())).thenReturn(Optional.of(tsUserAperto));
+        when(clienteRepository.findById(c1.getId())).thenReturn(Optional.of(c1));
+        when(rigaRepository.findByTimesheetIdOrdered(tsUserAperto.getId())).thenReturn(List.of(existing));
+        when(rigaRepository.save(any(TimesheetRiga.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(mapper.toDto(any(TimesheetRiga.class))).thenAnswer(inv -> dtoFrom(inv.getArgument(0)));
+
+        var out = service.save(dto);
+
+        assertThat(out.getId()).isEqualTo(900L);
+        assertThat(out.getOre()).isEqualTo(4);
+        assertThat(out.getMinuti()).isEqualTo(15);
+        assertThat(out.getOrario()).isEqualByComparingTo("4.25");
+        assertThat(out.getCostoOrario()).isEqualByComparingTo("51.00");
+    }
+
+    @Test
+    void save_rejectsNonLavoratoWhenWorkingRowsAlreadyExist() {
+        authAsUser();
+
+        Cliente nonLavorato = new Cliente();
+        nonLavorato.setId(99L);
+        nonLavorato.setNome(SystemClienti.NON_LAVORATO);
+        nonLavorato.setTariffaOraria(0);
+
+        TimesheetRiga existing = new TimesheetRiga();
+        existing.setId(901L);
+        existing.setTimesheet(tsUserAperto);
+        existing.setCliente(c1);
+        existing.setData(LocalDate.of(2025, 10, 17));
+        existing.setOre(2);
+        existing.setMinuti(0);
+
+        CreaTimesheetRigaDto dto = new CreaTimesheetRigaDto();
+        dto.setTimesheetId(tsUserAperto.getId());
+        dto.setClienteId(nonLavorato.getId());
+        dto.setData(LocalDate.of(2025, 10, 17));
+        dto.setOre(0);
+        dto.setMinuti(0);
+
+        when(timesheetRepository.findById(tsUserAperto.getId())).thenReturn(Optional.of(tsUserAperto));
+        when(clienteRepository.findById(nonLavorato.getId())).thenReturn(Optional.of(nonLavorato));
+        when(rigaRepository.findByTimesheetIdOrdered(tsUserAperto.getId())).thenReturn(List.of(existing));
+
+        assertThatThrownBy(() -> service.save(dto))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("NON LAVORATO")
+                .hasMessageContaining("2025-10-17");
+    }
+
+    @Test
+    void save_rejectsWorkingRowWhenNonLavoratoAlreadyExists() {
+        authAsUser();
+
+        Cliente nonLavorato = new Cliente();
+        nonLavorato.setId(99L);
+        nonLavorato.setNome(SystemClienti.NON_LAVORATO);
+        nonLavorato.setTariffaOraria(0);
+
+        TimesheetRiga existing = new TimesheetRiga();
+        existing.setId(902L);
+        existing.setTimesheet(tsUserAperto);
+        existing.setCliente(nonLavorato);
+        existing.setData(LocalDate.of(2025, 10, 18));
+        existing.setOre(0);
+        existing.setMinuti(0);
+
+        CreaTimesheetRigaDto dto = new CreaTimesheetRigaDto();
+        dto.setTimesheetId(tsUserAperto.getId());
+        dto.setClienteId(c1.getId());
+        dto.setData(LocalDate.of(2025, 10, 18));
+        dto.setOre(3);
+        dto.setMinuti(0);
+
+        when(timesheetRepository.findById(tsUserAperto.getId())).thenReturn(Optional.of(tsUserAperto));
+        when(clienteRepository.findById(c1.getId())).thenReturn(Optional.of(c1));
+        when(rigaRepository.findByTimesheetIdOrdered(tsUserAperto.getId())).thenReturn(List.of(existing));
+
+        assertThatThrownBy(() -> service.save(dto))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("NON LAVORATO")
+                .hasMessageContaining("2025-10-18");
+    }
+
+    @Test
     void save_illegal_zeroDuration_whenClienteNormale() {
         authAsUser();
 
@@ -471,6 +573,52 @@ class TimesheetRigaServiceTest {
         assertThatThrownBy(() -> service.update(62L, dto))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("non modificabile");
+    }
+
+    @Test
+    void update_sameClientSameDay_mergesRowsAndDeletesEditedRow() {
+        authAsUser();
+
+        Cliente clienteB = new Cliente();
+        clienteB.setId(20L);
+        clienteB.setNome("Beta");
+        clienteB.setTariffaOraria(10.0);
+
+        TimesheetRiga existing = new TimesheetRiga();
+        existing.setId(1000L);
+        existing.setTimesheet(tsUserAperto);
+        existing.setCliente(c1);
+        existing.setData(LocalDate.of(2025, 10, 20));
+        existing.setOre(1);
+        existing.setMinuti(0);
+
+        TimesheetRiga mergeTarget = new TimesheetRiga();
+        mergeTarget.setId(1001L);
+        mergeTarget.setTimesheet(tsUserAperto);
+        mergeTarget.setCliente(clienteB);
+        mergeTarget.setData(LocalDate.of(2025, 10, 21));
+        mergeTarget.setOre(2);
+        mergeTarget.setMinuti(30);
+
+        CreaTimesheetRigaDto dto = new CreaTimesheetRigaDto();
+        dto.setTimesheetId(tsUserAperto.getId());
+        dto.setClienteId(clienteB.getId());
+        dto.setData(LocalDate.of(2025, 10, 21));
+        dto.setOre(1);
+        dto.setMinuti(45);
+
+        when(rigaRepository.findById(1000L)).thenReturn(Optional.of(existing));
+        when(clienteRepository.findById(clienteB.getId())).thenReturn(Optional.of(clienteB));
+        when(rigaRepository.findByTimesheetIdOrdered(tsUserAperto.getId())).thenReturn(List.of(existing, mergeTarget));
+        when(rigaRepository.save(any(TimesheetRiga.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(mapper.toDto(any(TimesheetRiga.class))).thenAnswer(inv -> dtoFrom(inv.getArgument(0)));
+
+        var out = service.update(1000L, dto);
+
+        assertThat(out.getId()).isEqualTo(1001L);
+        assertThat(out.getOre()).isEqualTo(4);
+        assertThat(out.getMinuti()).isEqualTo(15);
+        verify(rigaRepository).delete(existing);
     }
 
     /* =========================== delete =========================== */

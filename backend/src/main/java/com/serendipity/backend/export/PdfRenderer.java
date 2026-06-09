@@ -67,25 +67,27 @@ public class PdfRenderer {
             PdfStamper stamper = new PdfStamper(reader, stampedOut);
 
             try {
-                int targetPage = reader.getNumberOfPages();
-                Rectangle pageSize = reader.getPageSize(targetPage);
+                int totalPages = reader.getNumberOfPages();
+                for (int pageNumber = 1; pageNumber <= totalPages; pageNumber++) {
+                    Rectangle pageSize = reader.getPageSize(pageNumber);
 
-                Image logo = Image.getInstance(logoBytes);
-                logo.scaleToFit(LOGO_WIDTH_POINTS, 1000f);
+                    Image logo = Image.getInstance(logoBytes);
+                    logo.scaleToFit(LOGO_WIDTH_POINTS, 1000f);
 
-                float x = pageSize.getRight() - LOGO_MARGIN_RIGHT - logo.getScaledWidth();
-                float y = pageSize.getBottom() + LOGO_MARGIN_BOTTOM;
-                logo.setAbsolutePosition(x, y);
+                    float x = pageSize.getRight() - LOGO_MARGIN_RIGHT - logo.getScaledWidth();
+                    float y = pageSize.getBottom() + LOGO_MARGIN_BOTTOM;
+                    logo.setAbsolutePosition(x, y);
 
-                PdfContentByte canvas = stamper.getOverContent(targetPage);
-                PdfGState gState = new PdfGState();
-                gState.setFillOpacity(LOGO_OPACITY);
-                gState.setStrokeOpacity(LOGO_OPACITY);
+                    PdfContentByte canvas = stamper.getOverContent(pageNumber);
+                    PdfGState gState = new PdfGState();
+                    gState.setFillOpacity(LOGO_OPACITY);
+                    gState.setStrokeOpacity(LOGO_OPACITY);
 
-                canvas.saveState();
-                canvas.setGState(gState);
-                canvas.addImage(logo);
-                canvas.restoreState();
+                    canvas.saveState();
+                    canvas.setGState(gState);
+                    canvas.addImage(logo);
+                    canvas.restoreState();
+                }
             } finally {
                 stamper.close();
                 reader.close();

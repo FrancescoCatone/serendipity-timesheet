@@ -103,6 +103,18 @@ function getDatesInRange(start: string, end: string): string[] {
     return dates;
 }
 
+function sameCalendarDayRows(
+    righe: TimesheetRigaDto[],
+    date: string,
+    ignoredRowId: number | null
+): TimesheetRigaDto[] {
+    return righe.filter((riga) => riga.data === date && riga.id !== ignoredRowId);
+}
+
+function isNonLavoratoRow(riga: TimesheetRigaDto): boolean {
+    return riga.clienteNome?.toUpperCase() === NON_LAVORATO_CLIENT_NAME;
+}
+
 function ModificaTimesheetPage() {
     const navigate = useNavigate();
     const { id } = useParams();
@@ -423,6 +435,28 @@ function ModificaTimesheetPage() {
             fieldErrors.data = `Le date devono appartenere a ${getMonthLabel(timesheetInfo.mese)} ${timesheetInfo.anno}`;
             if (!editingRigaId && useDateRange) {
                 fieldErrors.dataFine = `Le date devono appartenere a ${getMonthLabel(timesheetInfo.mese)} ${timesheetInfo.anno}`;
+            }
+        }
+
+        if (Object.keys(fieldErrors).length === 0) {
+            for (const targetDate of intervalDates) {
+                const rowsOnDate = sameCalendarDayRows(righe, targetDate, editingRigaId);
+
+                if (isNonLavoratoSelected && rowsOnDate.length > 0) {
+                    fieldErrors.data = `Il ${formatDate(targetDate)} contiene già lavorazioni: rimuovile prima di inserire NON LAVORATO`;
+                    if (!editingRigaId && useDateRange) {
+                        fieldErrors.dataFine = fieldErrors.data;
+                    }
+                    break;
+                }
+
+                if (!isNonLavoratoSelected && rowsOnDate.some(isNonLavoratoRow)) {
+                    fieldErrors.data = `Il ${formatDate(targetDate)} è marcato come NON LAVORATO: elimina quella riga prima di inserire un cliente`;
+                    if (!editingRigaId && useDateRange) {
+                        fieldErrors.dataFine = fieldErrors.data;
+                    }
+                    break;
+                }
             }
         }
 
