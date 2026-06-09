@@ -16,8 +16,9 @@
             color: #000;
         }
 
-        body {
+        .page-content {
             position: relative;
+            min-height: 255mm;
         }
 
         .header-main {
@@ -109,8 +110,8 @@
 
         .footer-logo {
             position: absolute;
-            top: 247mm;
             right: 8mm;
+            bottom: -4mm;
             text-align: right;
         }
 
@@ -165,9 +166,9 @@
         </tfoot>
     </table>
 
-</div>
-<div class="footer-logo" th:if="${logoDataUri != null}">
-    <img th:src="${logoDataUri}" alt="Logo Serendipity"/>
+    <div class="footer-logo" th:if="${logoDataUri != null}">
+        <img th:src="${logoDataUri}" alt="Logo Serendipity"/>
+    </div>
 </div>
 </body>
 </html>
