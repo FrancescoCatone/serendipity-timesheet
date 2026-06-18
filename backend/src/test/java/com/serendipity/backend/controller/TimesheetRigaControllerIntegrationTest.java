@@ -616,6 +616,49 @@ public class TimesheetRigaControllerIntegrationTest {
 
     @Test
     @WithMockUser(username = "user@serendipity.com", roles = "DIPENDENTE")
+    void getByTimesheet_preservesInsertionOrderWithinSameDay() throws Exception {
+        TimesheetRiga firstInserted = new TimesheetRiga();
+        firstInserted.setTimesheet(tsUserAperto);
+        firstInserted.setCliente(clienteB);
+        firstInserted.setData(LocalDate.of(2025, 10, 20));
+        firstInserted.setOre(2);
+        firstInserted.setMinuti(0);
+        firstInserted.setOrario(2.0);
+        firstInserted.setCostoOrario(40.0);
+        firstInserted = rigaRepository.save(firstInserted);
+
+        TimesheetRiga secondInserted = new TimesheetRiga();
+        secondInserted.setTimesheet(tsUserAperto);
+        secondInserted.setCliente(clienteA);
+        secondInserted.setData(LocalDate.of(2025, 10, 20));
+        secondInserted.setOre(1);
+        secondInserted.setMinuti(30);
+        secondInserted.setOrario(1.5);
+        secondInserted.setCostoOrario(18.0);
+        secondInserted = rigaRepository.save(secondInserted);
+
+        TimesheetRiga nextDay = new TimesheetRiga();
+        nextDay.setTimesheet(tsUserAperto);
+        nextDay.setCliente(clienteA);
+        nextDay.setData(LocalDate.of(2025, 10, 21));
+        nextDay.setOre(1);
+        nextDay.setMinuti(0);
+        nextDay.setOrario(1.0);
+        nextDay.setCostoOrario(12.0);
+        rigaRepository.save(nextDay);
+
+        mockMvc.perform(get("/api/timesheet-righe/by-timesheet/{id}", tsUserAperto.getId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(3))
+                .andExpect(jsonPath("$.data[0].id").value(firstInserted.getId().intValue()))
+                .andExpect(jsonPath("$.data[0].clienteNome").value(clienteB.getNome()))
+                .andExpect(jsonPath("$.data[1].id").value(secondInserted.getId().intValue()))
+                .andExpect(jsonPath("$.data[1].clienteNome").value(clienteA.getNome()))
+                .andExpect(jsonPath("$.data[2].data").value("2025-10-21"));
+    }
+
+    @Test
+    @WithMockUser(username = "user@serendipity.com", roles = "DIPENDENTE")
     void getByTimesheet_notOwner_hidden() throws Exception {
         mockMvc.perform(get("/api/timesheet-righe/by-timesheet/{id}", tsAdminAperto.getId()))
                 .andExpect(status().isNotFound());

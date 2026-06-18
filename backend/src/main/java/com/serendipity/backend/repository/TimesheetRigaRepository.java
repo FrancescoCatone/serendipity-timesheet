@@ -70,7 +70,7 @@ public interface TimesheetRigaRepository extends JpaRepository<TimesheetRiga, Lo
             select r
             from TimesheetRiga r
             where r.timesheet.id = :timesheetId
-            order by r.data asc, r.cliente.nome asc, r.id asc
+            order by r.data asc, r.id asc
             """)
     List<TimesheetRiga> findByTimesheetIdOrdered(@Param("timesheetId") Long timesheetId);
 

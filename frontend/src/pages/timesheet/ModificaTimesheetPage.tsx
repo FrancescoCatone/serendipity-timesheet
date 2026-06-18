@@ -219,21 +219,7 @@ function ModificaTimesheetPage() {
         try {
             setRigheLoading(true);
             const response = await getTimesheetRigheByTimesheetApi(timesheetId);
-            const righeOrdinate = [...(response.data ?? [])].sort((a, b) => {
-                const byDate = a.data.localeCompare(b.data);
-                if (byDate !== 0) {
-                    return byDate;
-                }
-
-                const byCliente = a.clienteNome.localeCompare(b.clienteNome);
-                if (byCliente !== 0) {
-                    return byCliente;
-                }
-
-                return a.id - b.id;
-            });
-
-            setRighe(righeOrdinate);
+            setRighe(response.data ?? []);
         } catch (error: unknown) {
             setRighe([]);
             toast.error(getErrorMessage(error, 'Errore durante il caricamento delle righe timesheet'));
