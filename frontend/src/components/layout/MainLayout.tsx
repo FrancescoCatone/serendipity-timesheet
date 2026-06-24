@@ -8,6 +8,7 @@ const adminMenuItems = [
     { label: 'Clienti', path: '/app/clienti' },
     { label: 'Timesheet', path: '/app/timesheet' },
     { label: 'Report', path: '/app/report' },
+    { label: 'Acconti', path: '/app/acconti' },
     { label: 'Profilo', path: '/app/profilo' },
 ];
 

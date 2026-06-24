@@ -17,6 +17,7 @@ import org.xhtmlrenderer.pdf.ITextRenderer;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Map;
 
 @Component
 public class PdfRenderer {
@@ -34,11 +35,15 @@ public class PdfRenderer {
     }
 
     public byte[] render(TimesheetSnapshotDto dto) {
+        return render("pdf/timesheet-pdf", Map.of("ts", dto));
+    }
+
+    public byte[] render(String templateName, Map<String, Object> variables) {
         try {
             Context ctx = new Context();
-            ctx.setVariable("ts", dto);
+            variables.forEach(ctx::setVariable);
 
-            String html = templateEngine.process("pdf/timesheet-pdf", ctx);
+            String html = templateEngine.process(templateName, ctx);
 
             try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
                 ITextRenderer renderer = new ITextRenderer();

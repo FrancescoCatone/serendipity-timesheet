@@ -3,6 +3,7 @@ import { toast } from 'react-toastify';
 import PageHeader from '../../components/common/PageHeader';
 import { getClientiApi } from '../../api/clientiApi';
 import {
+    exportReportClientePdfApi,
     getReportClienteApi,
     getReportClienteGiornoApi,
     getReportDipendenteApi,
@@ -78,6 +79,7 @@ function ReportPage() {
 
     const [loadingSupportData, setLoadingSupportData] = useState(true);
     const [loadingReport, setLoadingReport] = useState(false);
+    const [exportingPdf, setExportingPdf] = useState(false);
 
     const [reportCliente, setReportCliente] = useState<ReportClienteDto | null>(null);
     const [reportClienteGiorno, setReportClienteGiorno] = useState<ReportClienteGiornoDto | null>(null);
@@ -265,6 +267,41 @@ function ReportPage() {
         }
     };
 
+    const handleExportPdf = async () => {
+        if (mode !== 'cliente') {
+            toast.error('L’export PDF è disponibile solo per il report cliente');
+            return;
+        }
+        if (!filters.clienteId || !filters.anno) {
+            toast.error('Per esportare il PDF seleziona cliente e anno');
+            return;
+        }
+
+        try {
+            setExportingPdf(true);
+            const { blob, filename } = await exportReportClientePdfApi({
+                clienteId: Number(filters.clienteId),
+                mese: filters.mese ? Number(filters.mese) : undefined,
+                anno: Number(filters.anno),
+            });
+
+            const url = window.URL.createObjectURL(blob);
+            const anchor = document.createElement('a');
+            anchor.href = url;
+            anchor.download = filename;
+            document.body.appendChild(anchor);
+            anchor.click();
+            anchor.remove();
+            window.URL.revokeObjectURL(url);
+
+            toast.success('PDF report cliente esportato con successo');
+        } catch (error: unknown) {
+            toast.error(getErrorMessage(error, 'Errore durante l’esportazione del PDF cliente'));
+        } finally {
+            setExportingPdf(false);
+        }
+    };
+
     return (
         <div>
             <PageHeader
@@ -404,10 +441,21 @@ function ReportPage() {
                         type="button"
                         className="primary-button form-submit-button"
                         onClick={handleGenerateReport}
-                        disabled={loadingSupportData || loadingReport}
+                        disabled={loadingSupportData || loadingReport || exportingPdf}
                     >
                         {loadingReport ? 'Generazione...' : 'Genera report'}
                     </button>
+
+                    {isAdmin && mode === 'cliente' ? (
+                        <button
+                            type="button"
+                            className="secondary-button"
+                            onClick={handleExportPdf}
+                            disabled={loadingSupportData || loadingReport || exportingPdf}
+                        >
+                            {exportingPdf ? 'Esportazione...' : 'Esporta PDF'}
+                        </button>
+                    ) : null}
                 </div>
             </div>
 

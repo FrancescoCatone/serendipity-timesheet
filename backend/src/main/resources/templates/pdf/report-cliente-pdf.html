@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="it" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <title th:text="'Report cliente - ' + ${report.clienteNome}"></title>
+    <style>
+        @page {
+            margin: 9mm 10mm 12mm;
+        }
+
+        body {
+            margin: 0;
+            font-family: sans-serif;
+            font-size: 10px;
+            line-height: 1.25;
+            color: #000;
+        }
+
+        .header-main {
+            font-size: 15px;
+            font-weight: bold;
+            margin-bottom: 2.5mm;
+            border-bottom: 1px solid #ccc;
+            padding-bottom: 1mm;
+        }
+
+        .summary {
+            margin-bottom: 4mm;
+        }
+
+        .summary strong {
+            display: inline-block;
+            min-width: 28mm;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+
+        th, td {
+            border: 1px solid #aaa;
+            padding: 6px 5px;
+            vertical-align: middle;
+        }
+
+        th {
+            background: #f0f0f0;
+            text-align: left;
+            font-size: 9px;
+            text-transform: uppercase;
+            padding-top: 7px;
+            padding-bottom: 7px;
+        }
+
+        tr {
+            page-break-inside: avoid;
+        }
+
+        tfoot td {
+            font-weight: bold;
+            background: #fafafa;
+            text-transform: uppercase;
+        }
+
+        .right {
+            text-align: right;
+        }
+
+        .center {
+            text-align: center;
+        }
+
+        .col-data {
+            width: 14%;
+        }
+
+        .col-dipendente {
+            width: 30%;
+        }
+
+        .col-ore {
+            width: 8%;
+        }
+
+        .col-min {
+            width: 8%;
+        }
+
+        .col-orario {
+            width: 16%;
+        }
+
+        .col-costo {
+            width: 24%;
+        }
+    </style>
+</head>
+<body>
+<div class="page-content">
+    <div class="header-main">
+        Report cliente <span th:text="${report.clienteNome}"></span>
+        &nbsp;&#183;&nbsp;
+        <span th:text="${report.meseNome} + ' ' + ${report.anno}"></span>
+        &nbsp;&#183;&nbsp;
+        Generato il <span th:text="${#temporals.format(report.dataGenerazione, 'dd/MM/yyyy HH:mm')}"></span>
+    </div>
+
+    <div class="summary">
+        <div><strong>Cliente</strong><span th:text="${report.clienteNome}"></span></div>
+        <div><strong>Periodo</strong><span th:text="${report.meseNome} + ' ' + ${report.anno}"></span></div>
+        <div><strong>Totale ore</strong><span th:text="${#numbers.formatDecimal(report.totaleOrario, 1, 2, 'COMMA')} + ' ore'"></span></div>
+        <div><strong>Totale costo</strong><span th:text="${#numbers.formatDecimal(report.totaleCosto, 1, 2, 'COMMA')} + ' EUR'"></span></div>
+    </div>
+
+    <table>
+        <thead>
+        <tr>
+            <th class="col-data center">Data</th>
+            <th class="col-dipendente">Dipendente</th>
+            <th class="col-ore center">Ore</th>
+            <th class="col-min center">Min</th>
+            <th class="col-orario right">Orario (H)</th>
+            <th class="col-costo right">Costo (EUR)</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="r : ${report.righe}">
+            <td class="center" th:text="${#temporals.format(r.data, 'dd/MM/yyyy')}"></td>
+            <td th:text="${r.dipendenteNomeCompleto}"></td>
+            <td class="center" th:text="${r.ore}"></td>
+            <td class="center" th:text="${r.minuti}"></td>
+            <td class="right" th:text="${#numbers.formatDecimal(r.orario, 1, 2, 'COMMA')}"></td>
+            <td class="right" th:text="${#numbers.formatDecimal(r.costo, 1, 2, 'COMMA')}"></td>
+        </tr>
+        </tbody>
+        <tfoot>
+        <tr>
+            <td colspan="4" class="right">TOTALI</td>
+            <td class="right" th:text="${#numbers.formatDecimal(report.totaleOrario, 1, 2, 'COMMA')}"></td>
+            <td class="right" th:text="${#numbers.formatDecimal(report.totaleCosto, 1, 2, 'COMMA')}"></td>
+        </tr>
+        </tfoot>
+    </table>
+</div>
+</body>
+</html>

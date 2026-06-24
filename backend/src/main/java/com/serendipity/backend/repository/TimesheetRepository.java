@@ -7,6 +7,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface TimesheetRepository extends JpaRepository<Timesheet, Long> {
@@ -14,6 +15,8 @@ public interface TimesheetRepository extends JpaRepository<Timesheet, Long> {
     boolean existsByUtenteId(Long utenteId);
 
     boolean existsByUtenteIdAndMeseAndAnno(Long utenteId, int mese, int anno);
+
+    Optional<Timesheet> findByUtenteIdAndMeseAndAnno(Long utenteId, int mese, int anno);
 
     List<Timesheet> findByUtenteIdOrderByAnnoAscMeseAsc(Long utenteId);
 

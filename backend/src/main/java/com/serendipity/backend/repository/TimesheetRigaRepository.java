@@ -3,6 +3,7 @@ package com.serendipity.backend.repository;
 import com.serendipity.backend.model.dto.TotaleClienteDto;
 import com.serendipity.backend.model.dto.TotaliDto;
 import com.serendipity.backend.model.dto.report.ReportClienteDipendenteDto;
+import com.serendipity.backend.model.dto.report.ReportClientePdfDettaglioRawDto;
 import com.serendipity.backend.model.dto.report.ReportClienteGiornoDipendenteDto;
 import com.serendipity.backend.model.dto.report.ReportDipendenteClienteDto;
 import com.serendipity.backend.model.entity.TimesheetRiga;
@@ -202,5 +203,37 @@ public interface TimesheetRigaRepository extends JpaRepository<TimesheetRiga, Lo
                                      @Param("mese") Integer mese,
                                      @Param("anno") Integer anno,
                                      @Param("excludedClienteNome") String excludedClienteNome);
+
+    @Query("""
+            select new com.serendipity.backend.model.dto.report.ReportClientePdfDettaglioRawDto(
+                r.data,
+                r.timesheet.utente.id,
+                r.timesheet.utente.nome,
+                r.timesheet.utente.cognome,
+                sum((r.ore * 60) + r.minuti),
+                coalesce(sum(r.orario), 0),
+                coalesce(sum(r.costoOrario), 0)
+            )
+            from TimesheetRiga r
+            where r.cliente.id = :clienteId
+              and r.timesheet.mese = :mese
+              and r.timesheet.anno = :anno
+            group by r.data, r.timesheet.utente.id, r.timesheet.utente.nome, r.timesheet.utente.cognome
+            order by r.data asc, r.timesheet.utente.cognome asc, r.timesheet.utente.nome asc
+            """)
+    List<ReportClientePdfDettaglioRawDto> reportClientePdfDettaglio(@Param("clienteId") Long clienteId,
+                                                                    @Param("mese") int mese,
+                                                                    @Param("anno") int anno);
+
+    @Query("""
+            select coalesce(sum(r.costoOrario), 0)
+            from TimesheetRiga r
+            where r.timesheet.utente.id = :utenteId
+              and r.timesheet.mese = :mese
+              and r.timesheet.anno = :anno
+            """)
+    Double sumCostoByUtenteIdAndMeseAndAnno(@Param("utenteId") Long utenteId,
+                                            @Param("mese") int mese,
+                                            @Param("anno") int anno);
 
 }

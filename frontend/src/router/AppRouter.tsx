@@ -16,6 +16,7 @@ import ProfilePage from '../pages/profilo/ProfilePage';
 import NuovoTimesheetPage from '../pages/timesheet/NuovoTimesheetPage';
 import ModificaTimesheetPage from '../pages/timesheet/ModificaTimesheetPage';
 import ReportPage from '../pages/report/ReportPage';
+import AccontiPage from '../pages/acconti/AccontiPage';
 
 function AppRouter() {
     return (
@@ -41,6 +42,7 @@ function AppRouter() {
                         <Route path="clienti" element={<ClientiPage />} />
                         <Route path="clienti/nuovo" element={<NuovoClientePage />} />
                         <Route path="clienti/:id/modifica" element={<ModificaClientePage />} />
+                        <Route path="acconti" element={<AccontiPage />} />
                     </Route>
                 </Route>
             </Route>
