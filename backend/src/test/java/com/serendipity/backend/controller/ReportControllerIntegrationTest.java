@@ -21,9 +21,12 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDate;
+import java.util.List;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
@@ -188,6 +191,69 @@ class ReportControllerIntegrationTest {
                         .param("mese", "13")
                         .param("anno", "2026"))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @WithMockUser(username = "raffaele.vermiglio@serendipitycoop.it", roles = "ADMIN")
+    void reportClientePdfDettaglio_queryAggregatesByDayAndDipendente() {
+        Timesheet ts1 = persistTimesheet(dipendente, 3, 2026, TimesheetStato.CHIUSO);
+        Timesheet ts2 = persistTimesheet(altroDipendente, 3, 2026, TimesheetStato.CHIUSO);
+
+        persistRiga(ts1, clienteA, LocalDate.of(2026, 3, 12), 1, 30);
+        persistRiga(ts1, clienteA, LocalDate.of(2026, 3, 12), 0, 45);
+        persistRiga(ts2, clienteA, LocalDate.of(2026, 3, 13), 2, 0);
+        persistRiga(ts2, clienteB, LocalDate.of(2026, 3, 13), 1, 0);
+
+        var rows = rigaRepository.reportClientePdfDettaglio(clienteA.getId(), 3, 2026);
+
+        assertThat(rows).hasSize(2);
+        assertThat(rows.get(0).data()).isEqualTo(LocalDate.of(2026, 3, 12));
+        assertThat(rows.get(0).utenteId()).isEqualTo(dipendente.getId());
+        assertThat(rows.get(0).totaleMinuti()).isEqualTo(135L);
+        assertThat(rows.get(0).orarioTotale()).isEqualTo(2.25);
+        assertThat(rows.get(1).data()).isEqualTo(LocalDate.of(2026, 3, 13));
+        assertThat(rows.get(1).utenteId()).isEqualTo(altroDipendente.getId());
+    }
+
+    @Test
+    @WithMockUser(username = "raffaele.vermiglio@serendipitycoop.it", roles = "ADMIN")
+    void exportReportClientePdf_ok_asAdmin() throws Exception {
+        Timesheet ts1 = persistTimesheet(dipendente, 3, 2026, TimesheetStato.CHIUSO);
+        persistRiga(ts1, clienteA, LocalDate.of(2026, 3, 2), 1, 30);
+
+        mockMvc.perform(get("/api/report/cliente/export")
+                        .param("clienteId", clienteA.getId().toString())
+                        .param("mese", "3")
+                        .param("anno", "2026"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Type", "application/pdf"))
+                .andExpect(header().string("Content-Disposition", org.hamcrest.Matchers.containsString(".pdf")));
+    }
+
+    @Test
+    @WithMockUser(username = "raffaele.vermiglio@serendipitycoop.it", roles = "ADMIN")
+    void exportReportClientePdfAnnuale_ok_asAdmin() throws Exception {
+        Timesheet marzo = persistTimesheet(dipendente, 3, 2026, TimesheetStato.CHIUSO);
+        Timesheet aprile = persistTimesheet(altroDipendente, 4, 2026, TimesheetStato.CHIUSO);
+        persistRiga(marzo, clienteA, LocalDate.of(2026, 3, 2), 1, 30);
+        persistRiga(aprile, clienteA, LocalDate.of(2026, 4, 5), 2, 0);
+
+        mockMvc.perform(get("/api/report/cliente/export")
+                        .param("clienteId", clienteA.getId().toString())
+                        .param("anno", "2026"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Type", "application/pdf"))
+                .andExpect(header().string("Content-Disposition", org.hamcrest.Matchers.containsString("report_cliente_acme_spa_2026.pdf")));
+    }
+
+    @Test
+    @WithMockUser(username = "user@serendipity.com", roles = "DIPENDENTE")
+    void exportReportClientePdf_forbidden_asDipendente() throws Exception {
+        mockMvc.perform(get("/api/report/cliente/export")
+                        .param("clienteId", clienteA.getId().toString())
+                        .param("mese", "3")
+                        .param("anno", "2026"))
+                .andExpect(status().isForbidden());
     }
 
     @Test

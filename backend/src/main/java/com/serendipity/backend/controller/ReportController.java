@@ -4,7 +4,10 @@ import com.serendipity.backend.model.dto.ResponseMessage;
 import com.serendipity.backend.model.dto.report.ReportClienteDto;
 import com.serendipity.backend.model.dto.report.ReportClienteGiornoDto;
 import com.serendipity.backend.model.dto.report.ReportDipendenteDto;
+import com.serendipity.backend.service.ReportExportService;
 import com.serendipity.backend.service.ReportService;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -19,9 +22,11 @@ import java.time.LocalDate;
 public class ReportController {
 
     private final ReportService service;
+    private final ReportExportService exportService;
 
-    public ReportController(ReportService service) {
+    public ReportController(ReportService service, ReportExportService exportService) {
         this.service = service;
+        this.exportService = exportService;
     }
 
     /**
@@ -42,6 +47,20 @@ public class ReportController {
     ) {
         ReportClienteDto report = service.reportPerCliente(clienteId, mese, anno);
         return ResponseEntity.ok(new ResponseMessage(200, "Report cliente generato", report));
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @GetMapping("/cliente/export")
+    public ResponseEntity<byte[]> exportReportCliente(
+            @RequestParam Long clienteId,
+            @RequestParam(required = false) Integer mese,
+            @RequestParam int anno
+    ) {
+        var file = exportService.exportCliente(clienteId, mese, anno);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + file.filename() + "\"")
+                .contentType(MediaType.APPLICATION_PDF)
+                .body(file.content());
     }
 
     @PreAuthorize("hasRole('ADMIN')")
