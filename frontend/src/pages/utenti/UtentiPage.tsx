@@ -157,14 +157,14 @@ function UtentiPage() {
                             <tbody>
                                 {utenti.map((utente) => (
                                     <tr key={utente.id}>
-                                        <td>{utente.codiceFiscale}</td>
-                                        <td>{utente.nome}</td>
-                                        <td>{utente.cognome}</td>
-                                        <td>{utente.email}</td>
-                                        <td>
+                                        <td data-label="Codice fiscale">{utente.codiceFiscale}</td>
+                                        <td data-label="Nome">{utente.nome}</td>
+                                        <td data-label="Cognome">{utente.cognome}</td>
+                                        <td data-label="Email">{utente.email}</td>
+                                        <td data-label="Ruolo">
                                             <span className="role-badge">{utente.ruolo}</span>
                                         </td>
-                                        <td>
+                                        <td data-label="Azioni">
                                             <div className="table-actions">
                                                 {canManageUtente(utente) ? (
                                                     <>

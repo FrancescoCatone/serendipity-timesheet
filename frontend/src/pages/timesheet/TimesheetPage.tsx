@@ -463,21 +463,21 @@ function TimesheetPage() {
                             <tbody>
                                 {timesheets.map((timesheet) => (
                                     <tr key={timesheet.id}>
-                                        <td>
+                                        <td data-label="Periodo">
                                             {getMonthLabel(timesheet.mese)} {timesheet.anno}
                                         </td>
 
-                                        {role === 'ADMIN' ? <td>{timesheet.utenteNomeCompleto}</td> : null}
+                                        {role === 'ADMIN' ? <td data-label="Utente">{timesheet.utenteNomeCompleto}</td> : null}
 
-                                        <td>
+                                        <td data-label="Stato">
                                             <span className={`stato-badge ${timesheet.stato.toLowerCase()}`}>
                                                 {timesheet.stato}
                                             </span>
                                         </td>
 
-                                        <td>{formatCompilazione(timesheet.dataCompilazione)}</td>
+                                        <td data-label="Data compilazione">{formatCompilazione(timesheet.dataCompilazione)}</td>
 
-                                        <td>
+                                        <td data-label="Azioni">
                                             <div className="table-actions">
                                                 {canOpenDetail(timesheet) ? (
                                                     <Link
@@ -629,8 +629,8 @@ function TimesheetPage() {
                                         <tbody>
                                             {totaliPerCliente.map((item) => (
                                                 <tr key={item.clienteId}>
-                                                    <td>{item.clienteNome}</td>
-                                                    <td>{item.orario.toFixed(2)} ore</td>
+                                                    <td data-label="Cliente">{item.clienteNome}</td>
+                                                    <td data-label="Totale orario">{item.orario.toFixed(2)} ore</td>
                                                     <td>€ {item.costo.toFixed(2)}</td>
                                                 </tr>
                                             ))}

@@ -381,11 +381,11 @@ function AccontiPage() {
                                     <tbody>
                                         {summary.movimenti.map((movimento) => (
                                             <tr key={movimento.id}>
-                                                <td>{formatDate(movimento.dataMovimento)}</td>
-                                                <td>{formatCurrency(movimento.importo)}</td>
+                                                <td data-label="Data">{formatDate(movimento.dataMovimento)}</td>
+                                                <td data-label="Importo">{formatCurrency(movimento.importo)}</td>
                                                 <td>{movimento.note || '—'}</td>
-                                                <td>{movimento.createdAt.replace('T', ' ').slice(0, 16)}</td>
-                                                <td>
+                                                <td data-label="Registrato il">{movimento.createdAt.replace('T', ' ').slice(0, 16)}</td>
+                                                <td data-label="Azioni">
                                                     <button
                                                         type="button"
                                                         className="table-action-button delete"

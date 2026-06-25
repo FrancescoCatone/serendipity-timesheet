@@ -1,4 +1,5 @@
-import { NavLink, Outlet, useNavigate, Link } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { NavLink, Outlet, useLocation, useNavigate, Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { getCurrentUserRole, logout } from '../../utils/auth';
 
@@ -21,9 +22,15 @@ const dipendenteMenuItems = [
 
 function MainLayout() {
     const navigate = useNavigate();
+    const location = useLocation();
     const role = getCurrentUserRole();
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
     const menuItems = role === 'ADMIN' ? adminMenuItems : dipendenteMenuItems;
+
+    useEffect(() => {
+        setMobileMenuOpen(false);
+    }, [location.pathname]);
 
     const handleLogout = () => {
         logout();
@@ -32,8 +39,15 @@ function MainLayout() {
     };
 
     return (
-        <div className="layout">
-            <aside className="sidebar">
+        <div className={`layout${mobileMenuOpen ? ' mobile-menu-open' : ''}`}>
+            <button
+                type="button"
+                className={`mobile-nav-backdrop${mobileMenuOpen ? ' visible' : ''}`}
+                onClick={() => setMobileMenuOpen(false)}
+                aria-label="Chiudi menu"
+            />
+
+            <aside className={`sidebar${mobileMenuOpen ? ' mobile-open' : ''}`}>
                 <Link to="/app/dashboard" className="sidebar-brand">
                     <img
                         src="/logo-serendipity.jpg"
@@ -57,7 +71,26 @@ function MainLayout() {
 
             <div className="main-content">
                 <header className="topbar">
-                    <div />
+                    <div className="topbar-left">
+                        <button
+                            type="button"
+                            className="mobile-menu-button"
+                            onClick={() => setMobileMenuOpen((current) => !current)}
+                            aria-expanded={mobileMenuOpen}
+                            aria-label="Apri menu"
+                        >
+                            Menu
+                        </button>
+
+                        <Link to="/app/dashboard" className="topbar-brand">
+                            <img
+                                src="/logo-serendipity.jpg"
+                                alt="Serendipity"
+                                className="topbar-logo"
+                            />
+                        </Link>
+                    </div>
+
                     <button onClick={handleLogout} className="logout-button">
                         Logout
                     </button>

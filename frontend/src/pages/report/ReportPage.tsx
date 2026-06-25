@@ -503,9 +503,9 @@ function ReportPage() {
                                 <tbody>
                                     {reportCliente.dettaglioDipendenti.map((item) => (
                                         <tr key={item.utenteId}>
-                                            <td>{`${item.nome} ${item.cognome}`.trim()}</td>
-                                            <td>{item.oreTotali.toFixed(2)} ore</td>
-                                            <td>{formatCurrency(item.costoTotale)}</td>
+                                            <td data-label="Dipendente">{`${item.nome} ${item.cognome}`.trim()}</td>
+                                            <td data-label="Totale ore">{item.oreTotali.toFixed(2)} ore</td>
+                                            <td data-label="Totale costo">{formatCurrency(item.costoTotale)}</td>
                                         </tr>
                                     ))}
                                 </tbody>
@@ -552,9 +552,9 @@ function ReportPage() {
                                 <tbody>
                                     {reportClienteGiorno.dettaglioDipendenti.map((item) => (
                                         <tr key={item.utenteId}>
-                                            <td>{`${item.nome} ${item.cognome}`.trim()}</td>
-                                            <td>{item.oreTotali.toFixed(2)} ore</td>
-                                            <td>{formatCurrency(item.costoTotale)}</td>
+                                            <td data-label="Dipendente">{`${item.nome} ${item.cognome}`.trim()}</td>
+                                            <td data-label="Totale ore">{item.oreTotali.toFixed(2)} ore</td>
+                                            <td data-label="Totale costo">{formatCurrency(item.costoTotale)}</td>
                                         </tr>
                                     ))}
                                 </tbody>
@@ -601,9 +601,9 @@ function ReportPage() {
                                 <tbody>
                                     {reportDipendente.dettaglioClienti.map((item) => (
                                         <tr key={item.clienteId}>
-                                            <td>{item.clienteNome}</td>
-                                            <td>{item.oreTotali.toFixed(2)} ore</td>
-                                            <td>{formatCurrency(item.costoTotale)}</td>
+                                            <td data-label="Cliente">{item.clienteNome}</td>
+                                            <td data-label="Totale ore">{item.oreTotali.toFixed(2)} ore</td>
+                                            <td data-label="Totale costo">{formatCurrency(item.costoTotale)}</td>
                                         </tr>
                                     ))}
                                 </tbody>

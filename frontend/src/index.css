@@ -34,6 +34,7 @@ body {
   min-height: 100vh;
   background: var(--color-background);
   color: var(--color-text);
+  overflow-x: hidden;
 }
 
 a {
@@ -44,6 +45,13 @@ a {
 button {
   font: inherit;
   cursor: pointer;
+}
+
+input,
+select,
+textarea,
+button {
+  font: inherit;
 }
 
 #root {
@@ -165,8 +173,14 @@ button {
   min-height: 100vh;
 }
 
+.mobile-nav-backdrop {
+  display: none;
+}
+
 .sidebar {
+  position: relative;
   width: 260px;
+  flex-shrink: 0;
   background: var(--color-sidebar);
   color: var(--color-sidebar-text);
   padding: 20px 16px;
@@ -228,11 +242,15 @@ button {
 
 .main-content {
   flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
 }
 
 .topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
   height: 64px;
   background: var(--color-surface);
   border-bottom: 1px solid var(--color-border);
@@ -240,6 +258,26 @@ button {
   align-items: center;
   justify-content: space-between;
   padding: 0 24px;
+}
+
+.topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.mobile-menu-button,
+.topbar-brand {
+  display: none;
+}
+
+.topbar-logo {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  border-radius: 10px;
+  background: white;
+  padding: 4px;
 }
 
 .logout-button {
@@ -257,6 +295,8 @@ button {
 
 .page-content {
   padding: 24px;
+  width: 100%;
+  min-width: 0;
 }
 
 /* PAGE HEADER */
@@ -493,6 +533,22 @@ button {
   box-shadow: 0 0 0 3px rgba(235, 0, 245, 0.12);
 }
 
+.form-group textarea {
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  outline: none;
+  background: white;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  resize: vertical;
+  min-height: 104px;
+}
+
+.form-group textarea:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(235, 0, 245, 0.12);
+}
+
 .form-actions {
   display: flex;
   justify-content: flex-end;
@@ -505,16 +561,219 @@ button {
 }
 
 @media (max-width: 768px) {
+  .auth-page {
+    align-items: flex-start;
+    padding: 16px;
+  }
+
+  .auth-card {
+    padding: 24px 20px;
+  }
+
+  .layout {
+    display: block;
+  }
+
+  .mobile-nav-backdrop {
+    position: fixed;
+    inset: 0;
+    border: none;
+    background: rgba(17, 17, 17, 0.42);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+    z-index: 39;
+  }
+
+  .mobile-nav-backdrop.visible {
+    display: block;
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: min(78vw, 288px);
+    z-index: 40;
+    transform: translateX(-100%);
+    transition: transform 0.22s ease;
+    overflow-y: auto;
+  }
+
+  .sidebar.mobile-open {
+    transform: translateX(0);
+  }
+
+  .main-content {
+    width: 100%;
+  }
+
+  .topbar {
+    height: auto;
+    min-height: 64px;
+    padding: 12px 16px;
+    gap: 12px;
+  }
+
+  .mobile-menu-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--color-border);
+    background: var(--color-surface);
+    border-radius: 10px;
+    padding: 10px 12px;
+    min-width: 72px;
+  }
+
+  .topbar-brand {
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .logout-button {
+    padding: 10px 12px;
+  }
+
+  .page-content {
+    padding: 16px;
+  }
+
+  .page-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+  }
+
+  .page-title {
+    font-size: 24px;
+  }
+
+  .page-actions,
   .form-grid {
     grid-template-columns: 1fr;
   }
 
+  .page-actions,
   .form-actions {
     flex-direction: column;
   }
 
+  .page-actions > *,
   .form-submit-button,
-  .secondary-button {
+  .secondary-button,
+  .action-link-button {
+    width: 100%;
+  }
+
+  .form-card,
+  .module-placeholder,
+  .dashboard-card,
+  .profile-card,
+  .table-card {
+    border-radius: 14px;
+  }
+
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .app-table {
+    min-width: 0;
+  }
+
+  .app-table thead {
+    display: none;
+  }
+
+  .app-table,
+  .app-table tbody,
+  .app-table tr,
+  .app-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .app-table tbody {
+    padding: 12px;
+  }
+
+  .app-table tr {
+    border: 1px solid var(--color-border);
+    border-radius: 14px;
+    background: var(--color-surface);
+    overflow: hidden;
+  }
+
+  .app-table tbody tr + tr {
+    margin-top: 12px;
+  }
+
+  .app-table td {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--color-border);
+    text-align: right;
+    word-break: break-word;
+  }
+
+  .app-table td:last-child {
+    border-bottom: none;
+  }
+
+  .app-table td::before {
+    content: attr(data-label);
+    flex: 0 0 42%;
+    text-align: left;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--color-text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .app-table td:first-child,
+  .app-table td:nth-child(2) {
+    font-weight: inherit;
+    color: inherit;
+  }
+
+  .table-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .table-actions .table-action-button,
+  .table-actions .action-link-button,
+  .app-table td .table-action-button {
+    flex: 1 1 100%;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .dialog-backdrop {
+    align-items: flex-end;
+    padding: 12px;
+  }
+
+  .dialog-card {
+    max-width: none;
+    padding: 20px;
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+  }
+
+  .dialog-actions {
+    flex-direction: column-reverse;
+  }
+
+  .dialog-button {
     width: 100%;
   }
 }

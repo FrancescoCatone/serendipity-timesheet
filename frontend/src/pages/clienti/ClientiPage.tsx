@@ -123,9 +123,9 @@ function ClientiPage() {
                             <tbody>
                                 {clienti.map((cliente) => (
                                     <tr key={cliente.id}>
-                                        <td>{cliente.nome}</td>
-                                        <td>{formatTariffaOraria(cliente.tariffaOraria)}</td>
-                                        <td>
+                                        <td data-label="Nome">{cliente.nome}</td>
+                                        <td data-label="Tariffa oraria">{formatTariffaOraria(cliente.tariffaOraria)}</td>
+                                        <td data-label="Azioni">
                                             <div className="table-actions">
                                                 <Link
                                                     to={`/app/clienti/${cliente.id}/modifica`}
