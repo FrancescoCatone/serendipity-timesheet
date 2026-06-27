@@ -47,6 +47,35 @@ cd "$PROJECT_DIR"
 echo "Starting docker compose deploy"
 docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" up -d --build
 
+BACKEND_CONTAINER_ID="$(docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" ps -q backend)"
+if [[ -z "$BACKEND_CONTAINER_ID" ]]; then
+  echo "Backend container not found after deploy" >&2
+  exit 1
+fi
+
+echo "Waiting for backend healthcheck"
+for attempt in {1..24}; do
+  HEALTH_STATUS="$(docker inspect --format='{{if .State.Health}}{{.State.Health.Status}}{{else}}no-healthcheck{{end}}' "$BACKEND_CONTAINER_ID")"
+  if [[ "$HEALTH_STATUS" == "healthy" ]]; then
+    echo "Backend is healthy."
+    break
+  fi
+
+  if [[ "$HEALTH_STATUS" == "unhealthy" ]]; then
+    echo "Backend reported unhealthy status." >&2
+    docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" logs backend --tail 200
+    exit 1
+  fi
+
+  if [[ "$attempt" -eq 24 ]]; then
+    echo "Timed out while waiting for backend healthcheck. Last status: $HEALTH_STATUS" >&2
+    docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" logs backend --tail 200
+    exit 1
+  fi
+
+  sleep 5
+done
+
 echo "Container status after deploy"
 docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" ps
 

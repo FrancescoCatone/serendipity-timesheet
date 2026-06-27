@@ -30,6 +30,19 @@ logging:
   level:
     org.springframework.security: WARN
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: never
+      show-components: never
+  health:
+    mail:
+      enabled: false
+
 app:
   security:
     jwt-secret: ${JWT_SECRET}

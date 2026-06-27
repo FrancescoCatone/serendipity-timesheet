@@ -10,7 +10,7 @@ RUN mvn -B -DskipTests package
 FROM eclipse-temurin:21-jre-jammy
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends fontconfig fonts-dejavu \
+    && apt-get install -y --no-install-recommends curl fontconfig fonts-dejavu \
     && rm -rf /var/lib/apt/lists/* \
     && useradd --system --create-home --shell /usr/sbin/nologin spring
 

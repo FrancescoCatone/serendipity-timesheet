@@ -51,6 +51,12 @@ services:
       APP_NOTIFICATIONS_RECIPIENT_EMAIL: ${APP_NOTIFICATIONS_RECIPIENT_EMAIL}
       APP_NOTIFICATIONS_FROM_EMAIL: ${APP_NOTIFICATIONS_FROM_EMAIL}
       APP_NOTIFICATIONS_SUBJECT_PREFIX: ${APP_NOTIFICATIONS_SUBJECT_PREFIX}
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/actuator/health >/dev/null || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+      start_period: 45s
     expose:
       - "8080"
 
