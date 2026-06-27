@@ -51,6 +51,10 @@ services:
       APP_NOTIFICATIONS_RECIPIENT_EMAIL: ${APP_NOTIFICATIONS_RECIPIENT_EMAIL}
       APP_NOTIFICATIONS_FROM_EMAIL: ${APP_NOTIFICATIONS_FROM_EMAIL}
       APP_NOTIFICATIONS_SUBJECT_PREFIX: ${APP_NOTIFICATIONS_SUBJECT_PREFIX}
+      SENTRY_DSN: ${SENTRY_DSN}
+      SENTRY_ENVIRONMENT: ${SENTRY_ENVIRONMENT}
+      SENTRY_TRACES_SAMPLE_RATE: ${SENTRY_TRACES_SAMPLE_RATE}
+      SENTRY_RELEASE: ${SENTRY_RELEASE}
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://localhost:8080/actuator/health >/dev/null || exit 1"]
       interval: 15s
@@ -64,6 +68,11 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-/api}
+        VITE_SENTRY_DSN: ${VITE_SENTRY_DSN}
+        VITE_SENTRY_ENVIRONMENT: ${VITE_SENTRY_ENVIRONMENT}
+        VITE_SENTRY_RELEASE: ${VITE_SENTRY_RELEASE}
     restart: unless-stopped
     depends_on:
       - backend

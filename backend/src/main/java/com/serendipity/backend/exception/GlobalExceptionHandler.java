@@ -1,6 +1,7 @@
 package com.serendipity.backend.exception;
 
 import com.serendipity.backend.model.dto.ResponseMessage;
+import io.sentry.Sentry;
 import jakarta.persistence.EntityNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -152,6 +153,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ResponseMessage> handleGeneric(Exception ex) {
         log.error("Errore interno", ex);
+        Sentry.captureException(ex);
         return ResponseEntity
                 .status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(body(HttpStatus.INTERNAL_SERVER_ERROR,
