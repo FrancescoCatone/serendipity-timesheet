@@ -12,16 +12,19 @@ import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 
+import java.text.NumberFormat;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 @Service
 public class EmailAdminNotificationService implements AdminNotificationService {
 
     private static final Logger log = LoggerFactory.getLogger(EmailAdminNotificationService.class);
     private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
+    private static final Locale ITALIAN_LOCALE = Locale.of("it", "IT");
 
     private final ObjectProvider<JavaMailSender> mailSenderProvider;
     private final AppNotificationProperties notificationProperties;
@@ -220,10 +223,18 @@ public class EmailAdminNotificationService implements AdminNotificationService {
         }
 
         return String.format(
-                "%s | tariffaOraria=%.2f",
+                "%s | tariffaOraria=%s",
                 fallback(cliente.getNome()),
-                cliente.getTariffaOraria()
+                formatCurrencyLikeAmount(cliente.getTariffaOraria())
         );
+    }
+
+    private String formatCurrencyLikeAmount(double value) {
+        NumberFormat formatter = NumberFormat.getNumberInstance(ITALIAN_LOCALE);
+        formatter.setMinimumFractionDigits(2);
+        formatter.setMaximumFractionDigits(2);
+        formatter.setGroupingUsed(false);
+        return formatter.format(value);
     }
 
     private String describeTimesheet(Timesheet timesheet) {

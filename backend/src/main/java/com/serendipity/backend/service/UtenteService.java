@@ -38,7 +38,8 @@ public class UtenteService {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
-    private UtenteMapper utenteMapper = UtenteMapper.INSTANCE;
+    @Autowired
+    private UtenteMapper utenteMapper;
 
     @Autowired
     private TimesheetRepository timesheetRepository;
