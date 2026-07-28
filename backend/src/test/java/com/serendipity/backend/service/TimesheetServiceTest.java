@@ -22,13 +22,15 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 
-import java.time.LocalDate;
 import java.util.Collections;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -361,9 +363,13 @@ class TimesheetServiceTest {
     @Test
     void search_argumentsInvalid() {
         authAsAdmin();
-        assertThatThrownBy(() -> service.search(0, 2025, null))
+        assertThatThrownBy(() -> service.search(0, 2025, null, null, 0, 10))
                 .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> service.search(13, 2025, null))
+        assertThatThrownBy(() -> service.search(13, 2025, null, null, 0, 10))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> service.search(10, 2025, null, null, -1, 10))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> service.search(10, 2025, null, null, 0, 0))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -374,12 +380,14 @@ class TimesheetServiceTest {
         var t2 = ts(2L, 10, admin, TimesheetStato.APERTO);
 
         // admin + utenteId=null → searchFiltered(10, 2025, null)
-        when(timesheetRepository.searchFiltered(10, 2025, null)).thenReturn(List.of(t1, t2));
+        when(timesheetRepository.searchFiltered(any(), any(), any(), any(), any()))
+                .thenReturn(new PageImpl<>(List.of(t1, t2), PageRequest.of(0, 10), 2));
         when(mapper.toDto(t1)).thenReturn(dtoFrom(t1));
         when(mapper.toDto(t2)).thenReturn(dtoFrom(t2));
 
-        var all = service.search(10, 2025, null);
-        assertThat(all).hasSize(2);
+        var all = service.search(10, 2025, null, null, 0, 10);
+        assertThat(all.getContent()).hasSize(2);
+        assertThat(all.getTotalElements()).isEqualTo(2);
     }
 
     @Test
@@ -388,11 +396,12 @@ class TimesheetServiceTest {
         var t1 = ts(1L, 10, user, TimesheetStato.APERTO);
 
         // admin + utenteId=200L → searchFiltered(10, 2025, 200L)
-        when(timesheetRepository.searchFiltered(10, 2025, 200L)).thenReturn(List.of(t1));
+        when(timesheetRepository.searchFiltered(any(), any(), any(), any(), any()))
+                .thenReturn(new PageImpl<>(List.of(t1), PageRequest.of(0, 10), 1));
         when(mapper.toDto(t1)).thenReturn(dtoFrom(t1));
 
-        var onlyUser = service.search(10, 2025, 200L);
-        assertThat(onlyUser).extracting(TimesheetDto::utenteId).containsExactly(200L);
+        var onlyUser = service.search(10, 2025, 200L, "CHIUSO", 0, 10);
+        assertThat(onlyUser.getContent()).extracting(TimesheetDto::utenteId).containsExactly(200L);
     }
 
     @Test
@@ -403,20 +412,24 @@ class TimesheetServiceTest {
         var own = ts(9L, 10, user, TimesheetStato.APERTO);
 
         // non-admin → utenteId passato (999L) viene ignorato, si forza il proprio id (200L)
-        when(timesheetRepository.searchFiltered(10, 2025, 200L)).thenReturn(List.of(own));
+        when(timesheetRepository.searchFiltered(any(), any(), any(), any(), any()))
+                .thenReturn(new PageImpl<>(List.of(own), PageRequest.of(0, 10), 1));
         when(mapper.toDto(own)).thenReturn(dtoFrom(own));
 
-        var res = service.search(10, 2025, 999L /* ignorato per non-admin */);
-        assertThat(res).hasSize(1);
-        assertThat(res.getFirst().utenteId()).isEqualTo(200L);
+        var res = service.search(10, 2025, 999L, "APERTO", 0, 10);
+        assertThat(res.getContent()).hasSize(1);
+        assertThat(res.getContent().getFirst().utenteId()).isEqualTo(200L);
     }
 
     @Test
-    void search_notFound_throws() {
+    void search_emptyPage_returnsEmptyPage() {
         authAsAdmin();
-        when(timesheetRepository.searchFiltered(10, 2025, null)).thenReturn(Collections.emptyList());
-        assertThatThrownBy(() -> service.search(10, 2025, null))
-                .isInstanceOf(EntityNotFoundException.class);
+        when(timesheetRepository.searchFiltered(any(), any(), any(), any(), any()))
+                .thenReturn(new PageImpl<>(List.of(), PageRequest.of(0, 10), 0));
+
+        var res = service.search(10, 2025, null, null, 0, 10);
+        assertThat(res.getContent()).isEmpty();
+        assertThat(res.getTotalElements()).isZero();
     }
 
     // anni/mesi disponibili ---------------------------------------------------
@@ -465,13 +478,13 @@ class TimesheetServiceTest {
         var t1 = ts(1L, 10, admin, TimesheetStato.APERTO);
         var t2 = ts(2L, 9, user, TimesheetStato.APERTO);
 
-        when(timesheetRepository.findAll(any(org.springframework.data.domain.Sort.class)))
-                .thenReturn(List.of(t1, t2));
+        when(timesheetRepository.searchFiltered(any(), any(), any(), any(), any()))
+                .thenReturn(new PageImpl<>(List.of(t1, t2), PageRequest.of(0, 10), 2));
         when(mapper.toDto(t1)).thenReturn(dtoFrom(t1));
         when(mapper.toDto(t2)).thenReturn(dtoFrom(t2));
 
-        var res = service.findAllFiltered();
-        assertThat(res).hasSize(2);
+        var res = service.findAllFiltered(0, 10);
+        assertThat(res.getContent()).hasSize(2);
     }
 
     @Test
@@ -481,12 +494,13 @@ class TimesheetServiceTest {
 
         var own = ts(3L, 10, user, TimesheetStato.APERTO);
 
-        when(timesheetRepository.findByUtenteIdOrderByAnnoAscMeseAsc(200L)).thenReturn(List.of(own));
+        when(timesheetRepository.searchFiltered(any(), any(), any(), any(), any()))
+                .thenReturn(new PageImpl<>(List.of(own), PageRequest.of(0, 10), 1));
         when(mapper.toDto(own)).thenReturn(dtoFrom(own));
 
-        var res = service.findAllFiltered();
-        assertThat(res).hasSize(1);
-        assertThat(res.getFirst().utenteId()).isEqualTo(200L);
+        var res = service.findAllFiltered(0, 10);
+        assertThat(res.getContent()).hasSize(1);
+        assertThat(res.getContent().getFirst().utenteId()).isEqualTo(200L);
     }
 
     // conferma ----------------------------------------------------------------

@@ -1,6 +1,9 @@
 package com.serendipity.backend.repository;
 
 import com.serendipity.backend.model.entity.Timesheet;
+import com.serendipity.backend.model.enums.TimesheetStato;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -32,11 +35,13 @@ public interface TimesheetRepository extends JpaRepository<Timesheet, Long> {
                 where (:mese is null or t.mese = :mese)
                   and (:anno is null or t.anno = :anno)
                   and (:utenteId is null or t.utente.id = :utenteId)
-                order by t.anno asc, t.mese asc, t.utente.cognome asc, t.utente.nome asc
+                  and (:stato is null or t.stato = :stato)
             """)
-    List<Timesheet> searchFiltered(@Param("mese") Integer mese,
+    Page<Timesheet> searchFiltered(@Param("mese") Integer mese,
                                    @Param("anno") Integer anno,
-                                   @Param("utenteId") Long utenteId);
+                                   @Param("utenteId") Long utenteId,
+                                   @Param("stato") TimesheetStato stato,
+                                   Pageable pageable);
 
     @Query("select distinct t.anno from Timesheet t where t.utente.id = :utenteId order by t.anno desc")
     List<Integer> findDistinctAnniByUtenteId(@Param("utenteId") Long utenteId);

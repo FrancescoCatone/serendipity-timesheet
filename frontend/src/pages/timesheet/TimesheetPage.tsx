@@ -1,10 +1,8 @@
-import axios from 'axios';
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import PageHeader from '../../components/common/PageHeader';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
-import { getUtentiApi } from '../../api/utentiApi';
+import PageHeader from '../../components/common/PageHeader';
 import {
     chiudiTimesheetApi,
     confermaTimesheetApi,
@@ -14,9 +12,15 @@ import {
     getTimesheetApi,
     getTotaliTimesheetApi,
     riapriTimesheetApi,
-    searchTimesheetApi,
 } from '../../api/timesheetApi';
-import type { TimesheetDto, TotaleClienteDto, TotaliDto } from '../../types/timesheet.ts';
+import { getUtentiApi } from '../../api/utentiApi';
+import type {
+    TimesheetDto,
+    TimesheetListMeta,
+    TimesheetStato,
+    TotaleClienteDto,
+    TotaliDto,
+} from '../../types/timesheet.ts';
 import { getCurrentUserRole } from '../../utils/auth';
 import { excludeAdminUsers, sortUsersByDisplayName } from '../../utils/entityFilters';
 import { getErrorMessage } from '../../utils/error';
@@ -33,6 +37,15 @@ type UserOption = {
     label: string;
 };
 
+type TimesheetFilters = {
+    mese: string;
+    anno: string;
+    utenteId: string;
+    stato: '' | TimesheetStato;
+};
+
+const PAGE_SIZE = 10;
+
 const MONTH_OPTIONS = [
     { value: 1, label: 'Gennaio' },
     { value: 2, label: 'Febbraio' },
@@ -48,13 +61,20 @@ const MONTH_OPTIONS = [
     { value: 12, label: 'Dicembre' },
 ];
 
+const STATO_OPTIONS: Array<{ value: '' | TimesheetStato; label: string }> = [
+    { value: '', label: 'Tutti gli stati' },
+    { value: 'APERTO', label: 'Aperto' },
+    { value: 'CONFERMATO', label: 'Confermato' },
+    { value: 'CHIUSO', label: 'Chiuso' },
+];
+
 function getMonthLabel(mese: number): string {
     return MONTH_OPTIONS.find((item) => item.value === mese)?.label ?? '';
 }
 
 function formatCompilazione(value: string | null): string {
     if (!value) {
-        return '—';
+        return '-';
     }
 
     try {
@@ -62,6 +82,36 @@ function formatCompilazione(value: string | null): string {
     } catch {
         return value;
     }
+}
+
+function getDefaultFilters(): TimesheetFilters {
+    const now = new Date();
+    return {
+        mese: String(now.getMonth() + 1),
+        anno: String(now.getFullYear()),
+        utenteId: '',
+        stato: '',
+    };
+}
+
+function getEmptyFilters(): TimesheetFilters {
+    return {
+        mese: '',
+        anno: '',
+        utenteId: '',
+        stato: '',
+    };
+}
+
+function createDefaultMeta(): TimesheetListMeta {
+    return {
+        page: 0,
+        size: PAGE_SIZE,
+        totalElements: 0,
+        totalPages: 0,
+        hasNext: false,
+        hasPrevious: false,
+    };
 }
 
 function TimesheetPage() {
@@ -73,12 +123,8 @@ function TimesheetPage() {
 
     const [anniDisponibili, setAnniDisponibili] = useState<number[]>([]);
     const [userOptions, setUserOptions] = useState<UserOption[]>([]);
-
-    const [filters, setFilters] = useState({
-        mese: '',
-        anno: '',
-        utenteId: '',
-    });
+    const [filters, setFilters] = useState<TimesheetFilters>(() => getDefaultFilters());
+    const [paginationMeta, setPaginationMeta] = useState<TimesheetListMeta>(() => createDefaultMeta());
 
     const [confirmState, setConfirmState] = useState<ConfirmState>(null);
 
@@ -86,6 +132,12 @@ function TimesheetPage() {
     const [selectedTimesheetForTotals, setSelectedTimesheetForTotals] = useState<TimesheetDto | null>(null);
     const [totali, setTotali] = useState<TotaliDto | null>(null);
     const [totaliPerCliente, setTotaliPerCliente] = useState<TotaleClienteDto[]>([]);
+
+    const clearTotals = () => {
+        setSelectedTimesheetForTotals(null);
+        setTotali(null);
+        setTotaliPerCliente([]);
+    };
 
     const loadSupportData = useCallback(async () => {
         const anniResponse = await getAnniTimesheetApi();
@@ -104,23 +156,69 @@ function TimesheetPage() {
         }
     }, [role]);
 
-    const loadTimesheets = useCallback(async () => {
+    const loadTimesheets = useCallback(async (activeFilters: TimesheetFilters, page = 0) => {
         try {
             setLoading(true);
-            const response = await getTimesheetApi();
-            setTimesheets(response.data ?? []);
+
+            const params: {
+                mese?: number;
+                anno?: number;
+                utenteId?: number;
+                stato?: string;
+                page: number;
+                size: number;
+            } = {
+                page,
+                size: PAGE_SIZE,
+            };
+
+            if (activeFilters.mese) {
+                params.mese = Number(activeFilters.mese);
+            }
+
+            if (activeFilters.anno) {
+                params.anno = Number(activeFilters.anno);
+            }
+
+            if (role === 'ADMIN' && activeFilters.utenteId) {
+                params.utenteId = Number(activeFilters.utenteId);
+            }
+
+            if (activeFilters.stato) {
+                params.stato = activeFilters.stato;
+            }
+
+            const response = await getTimesheetApi(params);
+            const data = response.data ?? [];
+            const meta = response.meta ?? {
+                page,
+                size: PAGE_SIZE,
+                totalElements: data.length,
+                totalPages: data.length === 0 ? 0 : 1,
+                hasNext: false,
+                hasPrevious: page > 0,
+            };
+
+            if (data.length === 0 && meta.totalPages > 0 && page >= meta.totalPages) {
+                await loadTimesheets(activeFilters, meta.totalPages - 1);
+                return;
+            }
+
+            setTimesheets(data);
+            setPaginationMeta(meta);
         } catch (error: unknown) {
             toast.error(getErrorMessage(error, 'Errore durante il caricamento dei timesheet'));
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [role]);
 
     useEffect(() => {
         const bootstrap = async () => {
             try {
+                const defaultFilters = getDefaultFilters();
                 await loadSupportData();
-                await loadTimesheets();
+                await loadTimesheets(defaultFilters, 0);
             } catch (error: unknown) {
                 toast.error(getErrorMessage(error, 'Errore durante l’inizializzazione del modulo timesheet'));
                 setLoading(false);
@@ -141,58 +239,46 @@ function TimesheetPage() {
         }));
     };
 
-    const clearTotals = () => {
-        setSelectedTimesheetForTotals(null);
-        setTotali(null);
-        setTotaliPerCliente([]);
-    };
-
     const handleSearch = async () => {
-        try {
-            setLoading(true);
-            clearTotals();
-
-            const params: { mese?: number; anno?: number; utenteId?: number } = {};
-
-            if (filters.mese) {
-                params.mese = Number(filters.mese);
-            }
-
-            if (filters.anno) {
-                params.anno = Number(filters.anno);
-            }
-
-            if (role === 'ADMIN' && filters.utenteId) {
-                params.utenteId = Number(filters.utenteId);
-            }
-
-            if (!params.mese && !params.anno && !params.utenteId) {
-                await loadTimesheets();
-                return;
-            }
-
-            const response = await searchTimesheetApi(params);
-            setTimesheets(response.data ?? []);
-        } catch (error: unknown) {
-            if (axios.isAxiosError(error) && error.response?.status === 404) {
-                setTimesheets([]);
-                toast.info('Nessun timesheet trovato con i filtri selezionati');
-            } else {
-                toast.error(getErrorMessage(error, 'Errore durante la ricerca dei timesheet'));
-            }
-        } finally {
-            setLoading(false);
-        }
+        clearTotals();
+        await loadTimesheets(filters, 0);
     };
 
     const handleReset = async () => {
-        setFilters({
-            mese: '',
-            anno: '',
-            utenteId: '',
-        });
+        const defaultFilters = getDefaultFilters();
+        setFilters(defaultFilters);
         clearTotals();
-        await loadTimesheets();
+        await loadTimesheets(defaultFilters, 0);
+    };
+
+    const handleShowAll = async () => {
+        const emptyFilters = getEmptyFilters();
+        setFilters(emptyFilters);
+        clearTotals();
+        await loadTimesheets(emptyFilters, 0);
+    };
+
+    const handleRefresh = async () => {
+        clearTotals();
+        await loadTimesheets(filters, paginationMeta.page);
+    };
+
+    const handlePreviousPage = async () => {
+        if (!paginationMeta.hasPrevious || loading) {
+            return;
+        }
+
+        clearTotals();
+        await loadTimesheets(filters, paginationMeta.page - 1);
+    };
+
+    const handleNextPage = async () => {
+        if (!paginationMeta.hasNext || loading) {
+            return;
+        }
+
+        clearTotals();
+        await loadTimesheets(filters, paginationMeta.page + 1);
     };
 
     const loadTotals = async (timesheet: TimesheetDto) => {
@@ -284,7 +370,7 @@ function TimesheetPage() {
 
             clearTotals();
             setConfirmState(null);
-            await loadTimesheets();
+            await loadTimesheets(filters, paginationMeta.page);
         } catch (error: unknown) {
             toast.error(getErrorMessage(error, 'Errore durante l’operazione sul timesheet'));
         } finally {
@@ -303,8 +389,8 @@ function TimesheetPage() {
 
     const subtitle =
         role === 'ADMIN'
-            ? `Totale timesheet: ${timesheets.length}`
-            : `Totale miei timesheet: ${timesheets.length}`;
+            ? `Totale timesheet: ${paginationMeta.totalElements}`
+            : `Totale miei timesheet: ${paginationMeta.totalElements}`;
 
     const dialogTitleMap: Record<ConfirmAction, string> = {
         delete: 'Conferma eliminazione',
@@ -341,7 +427,7 @@ function TimesheetPage() {
                         <button
                             type="button"
                             className="secondary-button"
-                            onClick={loadTimesheets}
+                            onClick={handleRefresh}
                             disabled={loading}
                         >
                             {loading ? 'Aggiornamento...' : 'Aggiorna'}
@@ -414,9 +500,36 @@ function TimesheetPage() {
                             </select>
                         </div>
                     ) : null}
+
+                    <div className="form-group">
+                        <label htmlFor="stato">Stato</label>
+                        <select
+                            id="stato"
+                            name="stato"
+                            value={filters.stato}
+                            onChange={handleFilterChange}
+                            className="form-select"
+                            disabled={loading}
+                        >
+                            {STATO_OPTIONS.map((option) => (
+                                <option key={option.label} value={option.value}>
+                                    {option.label}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
                 </div>
 
                 <div className="form-actions">
+                    <button
+                        type="button"
+                        className="secondary-button"
+                        onClick={handleShowAll}
+                        disabled={loading}
+                    >
+                        Mostra tutti
+                    </button>
+
                     <button
                         type="button"
                         className="secondary-button"
@@ -467,7 +580,9 @@ function TimesheetPage() {
                                             {getMonthLabel(timesheet.mese)} {timesheet.anno}
                                         </td>
 
-                                        {role === 'ADMIN' ? <td data-label="Utente">{timesheet.utenteNomeCompleto}</td> : null}
+                                        {role === 'ADMIN' ? (
+                                            <td data-label="Utente">{timesheet.utenteNomeCompleto}</td>
+                                        ) : null}
 
                                         <td data-label="Stato">
                                             <span className={`stato-badge ${timesheet.stato.toLowerCase()}`}>
@@ -475,7 +590,9 @@ function TimesheetPage() {
                                             </span>
                                         </td>
 
-                                        <td data-label="Data compilazione">{formatCompilazione(timesheet.dataCompilazione)}</td>
+                                        <td data-label="Data compilazione">
+                                            {formatCompilazione(timesheet.dataCompilazione)}
+                                        </td>
 
                                         <td data-label="Azioni">
                                             <div className="table-actions">
@@ -558,13 +675,37 @@ function TimesheetPage() {
                             </tbody>
                         </table>
                     </div>
+
+                    <div className="table-pagination">
+                        <button
+                            type="button"
+                            className="secondary-button"
+                            onClick={handlePreviousPage}
+                            disabled={loading || !paginationMeta.hasPrevious}
+                        >
+                            Precedente
+                        </button>
+
+                        <span className="table-pagination-status">
+                            Pagina {paginationMeta.totalPages === 0 ? 0 : paginationMeta.page + 1} di {paginationMeta.totalPages}
+                        </span>
+
+                        <button
+                            type="button"
+                            className="secondary-button"
+                            onClick={handleNextPage}
+                            disabled={loading || !paginationMeta.hasNext}
+                        >
+                            Successiva
+                        </button>
+                    </div>
                 </div>
             )}
 
             {selectedTimesheetForTotals ? (
                 <div className="table-card" style={{ marginTop: '1.5rem' }}>
                     <PageHeader
-                        title={`Totali — ${getMonthLabel(selectedTimesheetForTotals.mese)} ${selectedTimesheetForTotals.anno}`}
+                        title={`Totali - ${getMonthLabel(selectedTimesheetForTotals.mese)} ${selectedTimesheetForTotals.anno}`}
                         subtitle={
                             role === 'ADMIN'
                                 ? selectedTimesheetForTotals.utenteNomeCompleto
@@ -604,7 +745,7 @@ function TimesheetPage() {
                                         <label>Totale costo</label>
                                         <input
                                             type="text"
-                                            value={totali ? `€ ${totali.totaleCosto.toFixed(2)}` : '€ 0.00'}
+                                            value={totali ? `EUR ${totali.totaleCosto.toFixed(2)}` : 'EUR 0.00'}
                                             disabled
                                         />
                                     </div>
@@ -631,7 +772,7 @@ function TimesheetPage() {
                                                 <tr key={item.clienteId}>
                                                     <td data-label="Cliente">{item.clienteNome}</td>
                                                     <td data-label="Totale orario">{item.orario.toFixed(2)} ore</td>
-                                                    <td>€ {item.costo.toFixed(2)}</td>
+                                                    <td data-label="Totale costo">EUR {item.costo.toFixed(2)}</td>
                                                 </tr>
                                             ))}
                                         </tbody>

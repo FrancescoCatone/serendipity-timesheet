@@ -18,6 +18,10 @@ import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
@@ -180,7 +184,7 @@ public class TimesheetService {
      * @throws IllegalArgumentException se i valori di mese o anno non sono validi
      * @throws EntityNotFoundException  se non vengono trovati timesheet con i filtri selezionati
      */
-    public List<TimesheetDto> search(Integer mese, Integer anno, Long utenteId) {
+    public Page<TimesheetDto> search(Integer mese, Integer anno, Long utenteId, String stato, int page, int size) {
         if (mese != null && (mese < 1 || mese > 12)) {
             throw new IllegalArgumentException("Il mese deve essere compreso tra 1 e 12");
         }
@@ -189,15 +193,29 @@ public class TimesheetService {
             throw new IllegalArgumentException("L'anno deve essere maggiore o uguale a 2000");
         }
 
-        Long effectiveUtenteId = currentUserIsAdmin() ? utenteId : getCurrentUserId();
-
-        List<Timesheet> results = timesheetRepository.searchFiltered(mese, anno, effectiveUtenteId);
-
-        if (results.isEmpty()) {
-            throw new EntityNotFoundException("Nessun timesheet trovato con i filtri selezionati");
+        if (page < 0) {
+            throw new IllegalArgumentException("La pagina deve essere maggiore o uguale a 0");
         }
 
-        return results.stream().map(mapper::toDto).toList();
+        if (size <= 0) {
+            throw new IllegalArgumentException("La dimensione pagina deve essere maggiore di 0");
+        }
+
+        Long effectiveUtenteId = currentUserIsAdmin() ? utenteId : getCurrentUserId();
+        TimesheetStato effectiveStato = parseStato(stato);
+        Pageable pageable = PageRequest.of(page, size, Sort.by(
+                Sort.Order.desc("anno"),
+                Sort.Order.desc("mese"),
+                Sort.Order.asc("utente.cognome"),
+                Sort.Order.asc("utente.nome"),
+                Sort.Order.desc("id")
+        ));
+
+        Page<Timesheet> results = timesheetRepository.searchFiltered(mese, anno, effectiveUtenteId, effectiveStato, pageable);
+        List<TimesheetDto> items = results.getContent().stream()
+                .map(mapper::toDto)
+                .toList();
+        return new PageImpl<>(items, pageable, results.getTotalElements());
     }
 
     /**
@@ -235,23 +253,8 @@ public class TimesheetService {
      *
      * @return Lista di TimesheetDto filtrati
      */
-    public List<TimesheetDto> findAllFiltered() {
-        boolean isAdmin = currentUserIsAdmin();
-
-        if (isAdmin) {
-            return timesheetRepository.findAll(Sort.by(
-                            Sort.Direction.ASC, "anno", "mese"
-                    ))
-                    .stream()
-                    .map(mapper::toDto)
-                    .toList();
-        } else {
-            Long currentUserId = getCurrentUserId();
-            return timesheetRepository.findByUtenteIdOrderByAnnoAscMeseAsc(currentUserId)
-                    .stream()
-                    .map(mapper::toDto)
-                    .toList();
-        }
+    public Page<TimesheetDto> findAllFiltered(int page, int size) {
+        return search(null, null, null, null, page, size);
     }
 
     /**
@@ -504,6 +507,18 @@ public class TimesheetService {
         copy.setStato(source.getStato());
         copy.setUtente(source.getUtente());
         return copy;
+    }
+
+    private TimesheetStato parseStato(String stato) {
+        if (stato == null || stato.isBlank()) {
+            return null;
+        }
+
+        try {
+            return TimesheetStato.valueOf(stato.trim().toUpperCase());
+        } catch (IllegalArgumentException ex) {
+            throw new IllegalArgumentException("Lo stato timesheet deve essere APERTO, CONFERMATO o CHIUSO");
+        }
     }
 
 }

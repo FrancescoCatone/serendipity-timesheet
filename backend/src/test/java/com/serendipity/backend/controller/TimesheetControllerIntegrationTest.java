@@ -130,7 +130,9 @@ public class TimesheetControllerIntegrationTest {
     void getAll_asAdmin_ok() throws Exception {
         mockMvc.perform(get("/api/timesheets"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.message").value("Lista timesheet"));
+                .andExpect(jsonPath("$.message").value("Lista timesheet"))
+                .andExpect(jsonPath("$.meta.page").value(0))
+                .andExpect(jsonPath("$.meta.size").value(10));
     }
 
     @Test
@@ -158,6 +160,7 @@ public class TimesheetControllerIntegrationTest {
         });
         List<Map<String, Object>> data = (List<Map<String, Object>>) body.get("data");
         assertThat(data).allMatch(map -> ((Integer) map.get("utenteId")).longValue() == dipendente.getId());
+        assertThat(body).containsKey("meta");
     }
 
     /* ======================= POST /api/timesheets ======================= */
@@ -446,6 +449,76 @@ public class TimesheetControllerIntegrationTest {
         List<Map<String, Object>> data = (List<Map<String, Object>>) map.get("data");
         assertThat(data).hasSize(1);
         assertThat(((Integer) data.getFirst().get("utenteId")).longValue()).isEqualTo(dipendente.getId());
+    }
+
+    @Test
+    @WithMockUser(username = "raffaele.vermiglio@serendipitycoop.it", roles = "ADMIN")
+    void getAll_filtersByStato_andPaginates() throws Exception {
+        for (int index = 0; index < 11; index++) {
+            Timesheet chiuso = new Timesheet();
+            chiuso.setAnno(2026);
+            chiuso.setMese(12 - index);
+            chiuso.setUtente(dipendente);
+            chiuso.setStato(TimesheetStato.CHIUSO);
+            timesheetRepository.save(chiuso);
+        }
+
+        Timesheet aperto = new Timesheet();
+        aperto.setAnno(2026);
+        aperto.setMese(1);
+        aperto.setUtente(admin);
+        aperto.setStato(TimesheetStato.APERTO);
+        timesheetRepository.save(aperto);
+
+        MvcResult result = mockMvc.perform(get("/api/timesheets")
+                        .param("stato", "CHIUSO")
+                        .param("page", "0")
+                        .param("size", "10"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.meta.page").value(0))
+                .andExpect(jsonPath("$.meta.size").value(10))
+                .andExpect(jsonPath("$.meta.totalElements").value(11))
+                .andExpect(jsonPath("$.meta.totalPages").value(2))
+                .andExpect(jsonPath("$.meta.hasNext").value(true))
+                .andExpect(jsonPath("$.meta.hasPrevious").value(false))
+                .andReturn();
+
+        Map<String, Object> body = objectMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>() {
+        });
+        List<Map<String, Object>> data = (List<Map<String, Object>>) body.get("data");
+        assertThat(data).hasSize(10);
+        assertThat(data).allMatch(item -> "CHIUSO".equals(item.get("stato")));
+    }
+
+    @Test
+    @WithMockUser(username = "raffaele.vermiglio@serendipitycoop.it", roles = "ADMIN")
+    void getAll_ordersMostRecentFirst() throws Exception {
+        Timesheet older = new Timesheet();
+        older.setAnno(2025);
+        older.setMese(12);
+        older.setUtente(dipendente);
+        older.setStato(TimesheetStato.APERTO);
+        timesheetRepository.save(older);
+
+        Timesheet newer = new Timesheet();
+        newer.setAnno(2026);
+        newer.setMese(1);
+        newer.setUtente(dipendente);
+        newer.setStato(TimesheetStato.APERTO);
+        timesheetRepository.save(newer);
+
+        MvcResult result = mockMvc.perform(get("/api/timesheets")
+                        .param("page", "0")
+                        .param("size", "10"))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        Map<String, Object> body = objectMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>() {
+        });
+        List<Map<String, Object>> data = (List<Map<String, Object>>) body.get("data");
+        assertThat(data).isNotEmpty();
+        assertThat((Integer) data.getFirst().get("anno")).isEqualTo(2026);
+        assertThat((Integer) data.getFirst().get("mese")).isEqualTo(1);
     }
 
     /* ======================= GET /api/timesheets/anni & /mesi ======================= */

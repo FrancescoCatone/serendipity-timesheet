@@ -3,6 +3,7 @@ import type { ResponseMessage } from '../types/common';
 import type {
     CreaTimesheetDto,
     TimesheetDto,
+    TimesheetListMeta,
     TotaleClienteDto,
     TotaliDto,
 } from '../types/timesheet.ts';
@@ -25,8 +26,17 @@ function extractFilename(contentDispositionHeader?: string): string {
     return 'timesheet.pdf';
 }
 
-export async function getTimesheetApi(): Promise<ResponseMessage<TimesheetDto[]>> {
-    const response = await http.get<ResponseMessage<TimesheetDto[]>>('/timesheets');
+export async function getTimesheetApi(params: {
+    mese?: number;
+    anno?: number;
+    utenteId?: number;
+    stato?: string;
+    page?: number;
+    size?: number;
+}): Promise<ResponseMessage<TimesheetDto[], TimesheetListMeta>> {
+    const response = await http.get<ResponseMessage<TimesheetDto[], TimesheetListMeta>>('/timesheets', {
+        params,
+    });
     return response.data;
 }
 
@@ -59,8 +69,11 @@ export async function searchTimesheetApi(params: {
     mese?: number;
     anno?: number;
     utenteId?: number;
-}): Promise<ResponseMessage<TimesheetDto[]>> {
-    const response = await http.get<ResponseMessage<TimesheetDto[]>>('/timesheets/search', {
+    stato?: string;
+    page?: number;
+    size?: number;
+}): Promise<ResponseMessage<TimesheetDto[], TimesheetListMeta>> {
+    const response = await http.get<ResponseMessage<TimesheetDto[], TimesheetListMeta>>('/timesheets/search', {
         params,
     });
     return response.data;

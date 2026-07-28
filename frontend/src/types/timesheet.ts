@@ -1,5 +1,14 @@
 export type TimesheetStato = 'APERTO' | 'CONFERMATO' | 'CHIUSO';
 
+export interface TimesheetListMeta {
+    page: number;
+    size: number;
+    totalElements: number;
+    totalPages: number;
+    hasNext: boolean;
+    hasPrevious: boolean;
+}
+
 export interface TimesheetDto {
     id: number;
     mese: number;

@@ -6,11 +6,12 @@ import com.serendipity.backend.model.dto.create.CreaTimesheetDto;
 import com.serendipity.backend.service.TimesheetService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/timesheets")
@@ -26,9 +27,16 @@ public class TimesheetController {
      */
     @PreAuthorize("hasAnyRole('ADMIN', 'DIPENDENTE')")
     @GetMapping
-    public ResponseEntity<ResponseMessage> getAll() {
-        List<TimesheetDto> result = service.findAllFiltered();
-        return ResponseEntity.ok(new ResponseMessage(200, "Lista timesheet", result));
+    public ResponseEntity<ResponseMessage> getAll(
+            @RequestParam(required = false) Integer mese,
+            @RequestParam(required = false) Integer anno,
+            @RequestParam(required = false) Long utenteId,
+            @RequestParam(required = false) String stato,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        Page<TimesheetDto> result = service.search(mese, anno, utenteId, stato, page, size);
+        return ResponseEntity.ok(new ResponseMessage(200, "Lista timesheet", result.getContent(), buildMeta(result)));
     }
 
     /**
@@ -97,10 +105,13 @@ public class TimesheetController {
     public ResponseEntity<ResponseMessage> search(
             @RequestParam(required = false) Integer mese,
             @RequestParam(required = false) Integer anno,
-            @RequestParam(required = false) Long utenteId // usato solo se ADMIN
+            @RequestParam(required = false) Long utenteId,
+            @RequestParam(required = false) String stato,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
     ) {
-        List<TimesheetDto> result = service.search(mese, anno, utenteId);
-        return ResponseEntity.ok(new ResponseMessage(200, "Risultati ricerca timesheet", result));
+        Page<TimesheetDto> result = service.search(mese, anno, utenteId, stato, page, size);
+        return ResponseEntity.ok(new ResponseMessage(200, "Risultati ricerca timesheet", result.getContent(), buildMeta(result)));
     }
 
     /**
@@ -182,6 +193,17 @@ public class TimesheetController {
         Object payload = service.totali(id, perCliente);
         String msg = perCliente ? "Totali per cliente" : "Totali timesheet";
         return ResponseEntity.ok(new ResponseMessage(200, msg, payload));
+    }
+
+    private Map<String, Object> buildMeta(Page<TimesheetDto> page) {
+        return Map.of(
+                "page", page.getNumber(),
+                "size", page.getSize(),
+                "totalElements", page.getTotalElements(),
+                "totalPages", page.getTotalPages(),
+                "hasNext", page.hasNext(),
+                "hasPrevious", page.hasPrevious()
+        );
     }
 
 }
