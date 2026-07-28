@@ -35,8 +35,7 @@ public class TimesheetRigaService {
     @Autowired
     private ClienteRepository clienteRepository;
 
-    @Autowired
-    private TimesheetRigaMapper mapper;
+    private TimesheetRigaMapper mapper = TimesheetRigaMapper.INSTANCE;
 
     @Autowired
     private UtenteRepository utenteRepository;

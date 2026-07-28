@@ -53,8 +53,7 @@ public class TimesheetService {
     @Autowired
     private TimesheetRigaRepository rigaRepository;
 
-    @Autowired
-    private TimesheetMapper mapper;
+    private TimesheetMapper mapper = TimesheetMapper.INSTANCE;
 
     @Autowired
     private CalendarioFestivitaService calendarioFestivitaService;

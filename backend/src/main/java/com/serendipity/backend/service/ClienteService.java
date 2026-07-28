@@ -22,8 +22,7 @@ public class ClienteService {
     @Autowired
     private ClienteRepository clienteRepository;
 
-    @Autowired
-    private ClienteMapper clienteMapper;
+    private ClienteMapper clienteMapper = ClienteMapper.INSTANCE;
 
     @Autowired
     private AdminNotificationService notificationService;
