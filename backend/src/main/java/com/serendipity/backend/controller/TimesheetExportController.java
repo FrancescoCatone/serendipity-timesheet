@@ -20,7 +20,7 @@ public class TimesheetExportController {
         this.exportService = exportService;
     }
 
-    @PreAuthorize("hasAnyRole('ADMIN','DIPENDENTE')")
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/{id}/export")
     public ResponseEntity<byte[]> export(@PathVariable long id) {
         var file = exportService.export(id); // ritorna contenuto + filename

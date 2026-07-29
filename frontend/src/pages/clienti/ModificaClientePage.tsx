@@ -163,7 +163,7 @@ function ModificaClientePage() {
                                 name="tariffaOraria"
                                 type="number"
                                 min="0"
-                                step="0.1"
+                                step="0.01"
                                 value={form.tariffaOraria}
                                 onChange={handleChange}
                                 disabled={saving}

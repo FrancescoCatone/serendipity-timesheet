@@ -385,7 +385,8 @@ function TimesheetPage() {
     const canRiapri = (timesheet: TimesheetDto): boolean =>
         timesheet.stato === 'CONFERMATO' || (timesheet.stato === 'CHIUSO' && role === 'ADMIN');
     const canChiudi = (timesheet: TimesheetDto): boolean => timesheet.stato === 'CONFERMATO';
-    const canExport = (timesheet: TimesheetDto): boolean => timesheet.stato === 'CHIUSO';
+    const canExport = (timesheet: TimesheetDto): boolean =>
+        role === 'ADMIN' && timesheet.stato === 'CHIUSO';
 
     const subtitle =
         role === 'ADMIN'

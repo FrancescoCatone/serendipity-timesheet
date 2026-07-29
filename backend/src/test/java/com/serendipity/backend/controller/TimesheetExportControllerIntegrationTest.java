@@ -47,20 +47,11 @@ class TimesheetExportControllerIntegrationTest {
 
     @Test
     @WithMockUser(username = "user", roles = {"DIPENDENTE"})
-    void export_ok_dipendente_allowed() throws Exception {
-        long id = 7L;
-        byte[] pdf = new byte[]{9, 9};
-        String filename = "anna_bianchi_gennaio_2026.pdf";
-        when(exportService.export(id)).thenReturn(new TimesheetExportService.ExportFile(pdf, filename));
+    void export_forbidden_dipendente_notAllowed() throws Exception {
+        mockMvc.perform(get("/api/timesheets/{id}/export", 7L))
+                .andExpect(status().isForbidden());
 
-        mockMvc.perform(get("/api/timesheets/{id}/export", id))
-                .andExpect(status().isOk())
-                .andExpect(header().string(HttpHeaders.CONTENT_DISPOSITION,
-                        containsString("attachment; filename=\"" + filename + "\"")))
-                .andExpect(content().contentType(MediaType.APPLICATION_PDF))
-                .andExpect(content().bytes(pdf));
-
-        verify(exportService).export(id);
+        verifyNoInteractions(exportService);
     }
 
     @Test
