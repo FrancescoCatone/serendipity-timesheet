@@ -31,7 +31,7 @@ public class ReportClientePdfAssembler {
         this.rigaRepository = rigaRepository;
     }
 
-    public ReportClientePdfSnapshotDto build(Long clienteId, int mese, int anno) {
+    public ReportClientePdfSnapshotDto build(Long clienteId, int mese, int anno, boolean mostraCosto) {
         Cliente cliente = clienteRepository.findById(clienteId)
                 .orElseThrow(() -> new EntityNotFoundException("Cliente non trovato"));
 
@@ -51,11 +51,12 @@ public class ReportClientePdfAssembler {
                 LocalDateTime.now(),
                 righe,
                 scale(totali.totaleOrario()),
-                scale(totali.totaleCosto())
+                scale(totali.totaleCosto()),
+                mostraCosto
         );
     }
 
-    public ReportClientePdfAnnualSnapshotDto buildAnnual(Long clienteId, int anno) {
+    public ReportClientePdfAnnualSnapshotDto buildAnnual(Long clienteId, int anno, boolean mostraCosto) {
         Cliente cliente = clienteRepository.findById(clienteId)
                 .orElseThrow(() -> new EntityNotFoundException("Cliente non trovato"));
 
@@ -92,7 +93,8 @@ public class ReportClientePdfAssembler {
                 LocalDateTime.now(),
                 mesi,
                 scale(totaliAnnuali.totaleOrario()),
-                scale(totaliAnnuali.totaleCosto())
+                scale(totaliAnnuali.totaleCosto()),
+                mostraCosto
         );
     }
 

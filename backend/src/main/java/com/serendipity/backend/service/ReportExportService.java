@@ -24,13 +24,13 @@ public class ReportExportService {
         this.pdfRenderer = pdfRenderer;
     }
 
-    public ExportFile exportCliente(Long clienteId, Integer mese, int anno) {
+    public ExportFile exportCliente(Long clienteId, Integer mese, int anno, boolean mostraCosto) {
         if (anno < 2000) {
             throw new IllegalArgumentException("L'anno deve essere maggiore o uguale a 2000");
         }
 
         if (mese == null) {
-            ReportClientePdfAnnualSnapshotDto snapshot = reportClientePdfAssembler.buildAnnual(clienteId, anno);
+            ReportClientePdfAnnualSnapshotDto snapshot = reportClientePdfAssembler.buildAnnual(clienteId, anno, mostraCosto);
             byte[] pdf = pdfRenderer.render("pdf/report-cliente-annuale-pdf", Map.of("report", snapshot));
             if (pdf == null || pdf.length == 0) {
                 throw new IllegalStateException("Errore durante la generazione del PDF");
@@ -43,7 +43,7 @@ public class ReportExportService {
             throw new IllegalArgumentException("Il mese deve essere compreso tra 1 e 12");
         }
 
-        ReportClientePdfSnapshotDto snapshot = reportClientePdfAssembler.build(clienteId, mese, anno);
+        ReportClientePdfSnapshotDto snapshot = reportClientePdfAssembler.build(clienteId, mese, anno, mostraCosto);
         byte[] pdf = pdfRenderer.render("pdf/report-cliente-pdf", Map.of("report", snapshot));
         if (pdf == null || pdf.length == 0) {
             throw new IllegalStateException("Errore durante la generazione del PDF");

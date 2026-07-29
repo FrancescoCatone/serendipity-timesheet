@@ -6,5 +6,6 @@ public record UtenteDto(
         String nome,
         String cognome,
         String email,
-        String ruolo) {
+        String ruolo,
+        Double pagaOraria) {
 }

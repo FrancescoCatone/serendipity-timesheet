@@ -1,5 +1,6 @@
 package com.serendipity.backend.model.entity;
 
+import com.serendipity.backend.model.enums.AccontoMovimentoTipo;
 import jakarta.persistence.*;
 
 import java.math.BigDecimal;
@@ -24,6 +25,10 @@ public class AccontoMovimento {
     @Column(nullable = false)
     private int anno;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 50)
+    private AccontoMovimentoTipo tipo;
+
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal importo;
 
@@ -40,6 +45,9 @@ public class AccontoMovimento {
     void prePersist() {
         if (createdAt == null) {
             createdAt = LocalDateTime.now();
+        }
+        if (tipo == null) {
+            tipo = AccontoMovimentoTipo.ACCONTO;
         }
     }
 
@@ -73,6 +81,14 @@ public class AccontoMovimento {
 
     public void setAnno(int anno) {
         this.anno = anno;
+    }
+
+    public AccontoMovimentoTipo getTipo() {
+        return tipo;
+    }
+
+    public void setTipo(AccontoMovimentoTipo tipo) {
+        this.tipo = tipo;
     }
 
     public BigDecimal getImporto() {

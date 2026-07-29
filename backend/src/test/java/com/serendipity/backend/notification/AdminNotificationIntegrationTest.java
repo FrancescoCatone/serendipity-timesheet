@@ -85,6 +85,7 @@ class AdminNotificationIntegrationTest {
         dto.setEmail("mario.rossi@serendipity.com");
         dto.setPassword("Password123!");
         dto.setRuolo(Ruolo.DIPENDENTE);
+        dto.setPagaOraria(12.0);
 
         mockMvc.perform(post("/api/utenti")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -133,6 +134,7 @@ class AdminNotificationIntegrationTest {
             u.setEmail("user@serendipity.com");
             u.setPassword(passwordEncoder.encode("UserTest123!"));
             u.setRuolo(Ruolo.DIPENDENTE);
+            u.setPagaOraria(12.0);
             return utenteRepository.save(u);
         });
 

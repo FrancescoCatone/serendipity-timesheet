@@ -112,7 +112,7 @@ public interface TimesheetRigaRepository extends JpaRepository<TimesheetRiga, Lo
                 r.timesheet.utente.nome,
                 r.timesheet.utente.cognome,
                 coalesce(sum(r.orario), 0),
-                coalesce(sum(r.costoOrario), 0)
+                coalesce(sum(r.orario * r.cliente.tariffaOraria), 0)
             )
             from TimesheetRiga r
             where r.cliente.id = :clienteId
@@ -128,7 +128,7 @@ public interface TimesheetRigaRepository extends JpaRepository<TimesheetRiga, Lo
     @Query("""
             select new com.serendipity.backend.model.dto.TotaliDto(
                 coalesce(sum(r.orario), 0),
-                coalesce(sum(r.costoOrario), 0)
+                coalesce(sum(r.orario * r.cliente.tariffaOraria), 0)
             )
             from TimesheetRiga r
             where r.cliente.id = :clienteId
@@ -145,7 +145,7 @@ public interface TimesheetRigaRepository extends JpaRepository<TimesheetRiga, Lo
                 r.timesheet.utente.nome,
                 r.timesheet.utente.cognome,
                 coalesce(sum(r.orario), 0),
-                coalesce(sum(r.costoOrario), 0)
+                coalesce(sum(r.orario * r.cliente.tariffaOraria), 0)
             )
             from TimesheetRiga r
             where r.cliente.id = :clienteId
@@ -159,7 +159,7 @@ public interface TimesheetRigaRepository extends JpaRepository<TimesheetRiga, Lo
     @Query("""
             select new com.serendipity.backend.model.dto.TotaliDto(
                 coalesce(sum(r.orario), 0),
-                coalesce(sum(r.costoOrario), 0)
+                coalesce(sum(r.orario * r.cliente.tariffaOraria), 0)
             )
             from TimesheetRiga r
             where r.cliente.id = :clienteId
@@ -212,7 +212,7 @@ public interface TimesheetRigaRepository extends JpaRepository<TimesheetRiga, Lo
                 r.timesheet.utente.cognome,
                 sum((r.ore * 60) + r.minuti),
                 coalesce(sum(r.orario), 0),
-                coalesce(sum(r.costoOrario), 0)
+                coalesce(sum(r.orario * r.cliente.tariffaOraria), 0)
             )
             from TimesheetRiga r
             where r.cliente.id = :clienteId

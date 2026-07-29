@@ -49,10 +49,17 @@ class PdfRendererTest {
                         LocalDate.of(2025, 5, 10),
                         1, 30,
                         new BigDecimal("1.50"),
-                        new BigDecimal("45.00")
+                        new BigDecimal("45.00"),
+                        false
                 )),
+                1,
+                30,
                 new BigDecimal("1.50"),
-                new BigDecimal("45.00")
+                new BigDecimal("45.00"),
+                new BigDecimal("45.00"),
+                BigDecimal.ZERO,
+                BigDecimal.ZERO,
+                List.of()
         );
 
         byte[] out = renderer.render(dto);
@@ -76,7 +83,8 @@ class PdfRendererTest {
 
         TimesheetSnapshotDto dto = new TimesheetSnapshotDto(
                 "X", "Y", 2025, LocalDateTime.now(), List.of(),
-                BigDecimal.ZERO, BigDecimal.ZERO
+                0, 0,
+                BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, List.of()
         );
 
         assertThatThrownBy(() -> renderer.render(dto))

@@ -11,8 +11,14 @@ public record TimesheetSnapshotDto(
         int anno,
         LocalDateTime dataGenerazione,
         List<Riga> righe,
+        int totaleOre,
+        int totaleMinuti,
         BigDecimal totaleOrario,
-        BigDecimal totaleCosto
+        BigDecimal totaleCosto,
+        BigDecimal maturatoAcconti,
+        BigDecimal totaleAcconti,
+        BigDecimal saldoResiduo,
+        List<AccontoMovimento> accontiMovimenti
 ) {
     public record Riga(
             String clienteNome,
@@ -33,5 +39,13 @@ public record TimesheetSnapshotDto(
         ) {
             this(clienteNome, data, ore, minuti, orario, costoOrario, false);
         }
+    }
+
+    public record AccontoMovimento(
+            LocalDate dataMovimento,
+            BigDecimal importo,
+            String note,
+            LocalDateTime registratoIl
+    ) {
     }
 }

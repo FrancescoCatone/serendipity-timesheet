@@ -129,7 +129,7 @@
         <div><strong>Cliente</strong><span th:text="${report.clienteNome}"></span></div>
         <div><strong>Periodo</strong><span th:text="${report.anno}"></span></div>
         <div><strong>Totale ore anno</strong><span th:text="${#numbers.formatDecimal(report.totaleOrario, 1, 2, 'COMMA')} + ' ore'"></span></div>
-        <div><strong>Totale costo anno</strong><span th:text="${#numbers.formatDecimal(report.totaleCosto, 1, 2, 'COMMA')} + ' EUR'"></span></div>
+        <div th:if="${report.mostraCosto}"><strong>Totale costo anno</strong><span th:text="${#numbers.formatDecimal(report.totaleCosto, 1, 2, 'COMMA')} + ' EUR'"></span></div>
     </div>
 
     <div th:if="${#lists.isEmpty(report.mesi)}">
@@ -147,7 +147,7 @@
                 <th class="col-ore center">Ore</th>
                 <th class="col-min center">Min</th>
                 <th class="col-orario right">Orario (H)</th>
-                <th class="col-costo right">Costo (EUR)</th>
+                <th th:if="${report.mostraCosto}" class="col-costo right">Costo (EUR)</th>
             </tr>
             </thead>
             <tbody>
@@ -157,7 +157,7 @@
                 <td class="center" th:text="${r.ore}"></td>
                 <td class="center" th:text="${r.minuti}"></td>
                 <td class="right" th:text="${#numbers.formatDecimal(r.orario, 1, 2, 'COMMA')}"></td>
-                <td class="right" th:text="${#numbers.formatDecimal(r.costo, 1, 2, 'COMMA')}"></td>
+                <td th:if="${report.mostraCosto}" class="right" th:text="${#numbers.formatDecimal(r.costo, 1, 2, 'COMMA')}"></td>
             </tr>
             </tbody>
         </table>
@@ -165,16 +165,20 @@
         <div class="month-summary">
             Totale mese:
             <span th:text="${#numbers.formatDecimal(meseReport.totaleOrario, 1, 2, 'COMMA')} + ' ore'"></span>
-            &nbsp;|&nbsp;
-            <span th:text="${#numbers.formatDecimal(meseReport.totaleCosto, 1, 2, 'COMMA')} + ' EUR'"></span>
+            <th:block th:if="${report.mostraCosto}">
+                &nbsp;|&nbsp;
+                <span th:text="${#numbers.formatDecimal(meseReport.totaleCosto, 1, 2, 'COMMA')} + ' EUR'"></span>
+            </th:block>
         </div>
     </div>
 
     <div class="annual-summary">
         Totale report annuale:
         <span th:text="${#numbers.formatDecimal(report.totaleOrario, 1, 2, 'COMMA')} + ' ore'"></span>
-        &nbsp;|&nbsp;
-        <span th:text="${#numbers.formatDecimal(report.totaleCosto, 1, 2, 'COMMA')} + ' EUR'"></span>
+        <th:block th:if="${report.mostraCosto}">
+            &nbsp;|&nbsp;
+            <span th:text="${#numbers.formatDecimal(report.totaleCosto, 1, 2, 'COMMA')} + ' EUR'"></span>
+        </th:block>
     </div>
 </div>
 </body>

@@ -6,6 +6,7 @@ import com.serendipity.backend.model.dto.create.CreaAccontoMovimentoDto;
 import com.serendipity.backend.model.entity.AccontoMovimento;
 import com.serendipity.backend.model.entity.Timesheet;
 import com.serendipity.backend.model.entity.Utente;
+import com.serendipity.backend.model.enums.AccontoMovimentoTipo;
 import com.serendipity.backend.model.enums.TimesheetStato;
 import com.serendipity.backend.repository.AccontoMovimentoRepository;
 import com.serendipity.backend.repository.TimesheetRepository;
@@ -113,6 +114,7 @@ class AccontiServiceTest {
         ArgumentCaptor<AccontoMovimento> captor = ArgumentCaptor.forClass(AccontoMovimento.class);
         verify(repository).save(captor.capture());
         assertThat(captor.getValue().getImporto()).isEqualByComparingTo("300.00");
+        assertThat(captor.getValue().getTipo()).isEqualTo(AccontoMovimentoTipo.ACCONTO);
     }
 
     @Test
@@ -184,6 +186,7 @@ class AccontiServiceTest {
         movimento.setUtente(utente);
         movimento.setMese(mese);
         movimento.setAnno(anno);
+        movimento.setTipo(AccontoMovimentoTipo.ACCONTO);
         movimento.setImporto(new BigDecimal(importo));
         movimento.setDataMovimento(LocalDate.of(2026, mese, 10));
         movimento.setCreatedAt(LocalDateTime.of(2026, mese, 10, 9, 0));

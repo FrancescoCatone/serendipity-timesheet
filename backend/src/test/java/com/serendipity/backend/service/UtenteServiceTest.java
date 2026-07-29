@@ -4,9 +4,11 @@ import com.serendipity.backend.mapper.UtenteMapper;
 import com.serendipity.backend.model.dto.UtenteDto;
 import com.serendipity.backend.model.dto.create.CreaUtenteDto;
 import com.serendipity.backend.model.dto.update.AggiornaPasswordDto;
+import com.serendipity.backend.model.dto.update.AggiornaUtenteDto;
 import com.serendipity.backend.model.entity.Utente;
 import com.serendipity.backend.model.enums.Ruolo;
 import com.serendipity.backend.repository.TimesheetRepository;
+import com.serendipity.backend.repository.TimesheetRigaRepository;
 import com.serendipity.backend.repository.UtenteRepository;
 import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.AfterEach;
@@ -49,6 +51,8 @@ class UtenteServiceTest {
     @Mock
     private TimesheetRepository timesheetRepository;
     @Mock
+    private TimesheetRigaRepository timesheetRigaRepository;
+    @Mock
     private AdminNotificationService notificationService;
 
     @InjectMocks
@@ -74,6 +78,19 @@ class UtenteServiceTest {
         d.setPassword(TEST_PWD);
         d.setCodiceFiscale(cf);
         d.setRuolo(ruolo);
+        d.setPagaOraria(ruolo == Ruolo.DIPENDENTE ? 12.5 : null);
+        return d;
+    }
+
+    private AggiornaUtenteDto updateDto(String email, String cf, Ruolo ruolo) {
+        AggiornaUtenteDto d = new AggiornaUtenteDto();
+        d.setNome("Mario");
+        d.setCognome("Rossi");
+        d.setEmail(email);
+        d.setPassword("");
+        d.setCodiceFiscale(cf);
+        d.setRuolo(ruolo);
+        d.setPagaOraria(ruolo == Ruolo.DIPENDENTE ? 12.5 : null);
         return d;
     }
 
@@ -86,6 +103,7 @@ class UtenteServiceTest {
         u.setPassword("hash");
         u.setCodiceFiscale(cf);
         u.setRuolo(ruolo);
+        u.setPagaOraria(ruolo == Ruolo.DIPENDENTE ? 12.5 : null);
         return u;
     }
 
@@ -120,7 +138,7 @@ class UtenteServiceTest {
         Utente u = ent(1L, "a@a.it", "RSSMRA85T10A562S", Ruolo.DIPENDENTE);
         when(utenteRepository.findAll()).thenReturn(List.of(u));
         when(utenteMapper.toDto(u))
-                .thenReturn(new UtenteDto(1L, u.getCodiceFiscale(), u.getNome(), u.getCognome(), u.getEmail(), u.getRuolo().name()));
+                .thenReturn(new UtenteDto(1L, u.getCodiceFiscale(), u.getNome(), u.getCognome(), u.getEmail(), u.getRuolo().name(), u.getPagaOraria()));
 
         var out = service.getAll();
 
@@ -192,7 +210,7 @@ class UtenteServiceTest {
         ArgumentCaptor<Utente> cap = ArgumentCaptor.forClass(Utente.class);
         when(utenteRepository.save(any(Utente.class))).thenAnswer(inv -> inv.getArgument(0));
         when(utenteMapper.toDto(any(Utente.class)))
-                .thenReturn(new UtenteDto(10L, d.getCodiceFiscale(), d.getNome(), d.getCognome(), "admin@acme.it", "ADMIN"));
+                .thenReturn(new UtenteDto(10L, d.getCodiceFiscale(), d.getNome(), d.getCognome(), "admin@acme.it", "ADMIN", null));
 
         var resp = service.creaUtente(d);
         assertThat(resp.getStatus()).isEqualTo(201);
@@ -211,7 +229,7 @@ class UtenteServiceTest {
     void findByCodiceFiscale_ok_mapsToDto() {
         Utente u = ent(7L, "mario@acme.it", "RSSMRA85T10A562S", Ruolo.DIPENDENTE);
         when(utenteRepository.findByCodiceFiscale("RSSMRA85T10A562S")).thenReturn(u);
-        when(utenteMapper.toDto(u)).thenReturn(new UtenteDto(7L, u.getCodiceFiscale(), u.getNome(), u.getCognome(), u.getEmail(), "DIPENDENTE"));
+        when(utenteMapper.toDto(u)).thenReturn(new UtenteDto(7L, u.getCodiceFiscale(), u.getNome(), u.getCognome(), u.getEmail(), "DIPENDENTE", u.getPagaOraria()));
 
         var resp = service.findByCodiceFiscale("RSSMRA85T10A562S");
 
@@ -225,7 +243,7 @@ class UtenteServiceTest {
     @Test
     void aggiornaUtente_notFound_throws404() {
         when(utenteRepository.findById(1L)).thenReturn(Optional.empty());
-        assertThatThrownBy(() -> service.aggiornaUtente(1L, dto("x@x.it", "RSSMRA...", Ruolo.DIPENDENTE)))
+        assertThatThrownBy(() -> service.aggiornaUtente(1L, updateDto("x@x.it", "RSSMRA...", Ruolo.DIPENDENTE)))
                 .isInstanceOf(EntityNotFoundException.class);
     }
 
@@ -235,7 +253,7 @@ class UtenteServiceTest {
         when(utenteRepository.findById(1L)).thenReturn(Optional.of(existing));
         when(utenteRepository.existsByCodiceFiscale("NEWNEW85T10A562S")).thenReturn(true);
 
-        var d = dto("old@acme.it", "NEWNEW85T10A562S", Ruolo.DIPENDENTE);
+        var d = updateDto("old@acme.it", "NEWNEW85T10A562S", Ruolo.DIPENDENTE);
 
         assertThatThrownBy(() -> service.aggiornaUtente(1L, d))
                 .isInstanceOf(DataIntegrityViolationException.class)
@@ -248,7 +266,7 @@ class UtenteServiceTest {
         when(utenteRepository.findById(1L)).thenReturn(Optional.of(existing));
         when(utenteRepository.existsByEmail("new@acme.it")).thenReturn(true);
 
-        var d = dto("new@acme.it", "RSSMRA85T10A562S", Ruolo.DIPENDENTE);
+        var d = updateDto("new@acme.it", "RSSMRA85T10A562S", Ruolo.DIPENDENTE);
 
         assertThatThrownBy(() -> service.aggiornaUtente(1L, d))
                 .isInstanceOf(DataIntegrityViolationException.class)
@@ -260,7 +278,7 @@ class UtenteServiceTest {
         Utente existing = ent(1L, "old@acme.it", "RSSMRA85T10A562S", Ruolo.DIPENDENTE);
         when(utenteRepository.findById(1L)).thenReturn(Optional.of(existing));
 
-        var d = dto("new@acme", "RSSMRA85T10A562S", Ruolo.DIPENDENTE);
+        var d = updateDto("new@acme", "RSSMRA85T10A562S", Ruolo.DIPENDENTE);
 
         assertThatThrownBy(() -> service.aggiornaUtente(1L, d))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -273,7 +291,8 @@ class UtenteServiceTest {
         when(utenteRepository.findById(1L)).thenReturn(Optional.of(existing));
         when(passwordEncoder.encode(TEST_PWD)).thenReturn("ENC2"); // <<<<<< sostituito
 
-        var d = dto("NEW@ACME.IT", "RSSMRA85T10A562S", Ruolo.ADMIN);
+        var d = updateDto("NEW@ACME.IT", "RSSMRA85T10A562S", Ruolo.ADMIN);
+        d.setPassword(TEST_PWD);
 
         var resp = service.aggiornaUtente(1L, d);
         assertThat(resp.getStatus()).isEqualTo(200);
@@ -290,7 +309,7 @@ class UtenteServiceTest {
         Utente existing = ent(1L, "system.operator@serendipitycoop.it", "RSSMRA85T10A562S", Ruolo.ADMIN);
         when(utenteRepository.findById(1L)).thenReturn(Optional.of(existing));
 
-        var d = dto("system.operator@serendipitycoop.it", "RSSMRA85T10A562S", Ruolo.ADMIN);
+        var d = updateDto("system.operator@serendipitycoop.it", "RSSMRA85T10A562S", Ruolo.ADMIN);
 
         assertThatThrownBy(() -> service.aggiornaUtente(1L, d))
                 .isInstanceOf(AccessDeniedException.class)
@@ -304,7 +323,8 @@ class UtenteServiceTest {
         when(utenteRepository.findById(1L)).thenReturn(Optional.of(existing));
         when(passwordEncoder.encode(TEST_PWD)).thenReturn("ENC2");
 
-        var d = dto("system.operator@serendipitycoop.it", "RSSMRA85T10A562S", Ruolo.ADMIN);
+        var d = updateDto("system.operator@serendipitycoop.it", "RSSMRA85T10A562S", Ruolo.ADMIN);
+        d.setPassword(TEST_PWD);
 
         var resp = service.aggiornaUtente(1L, d);
         assertThat(resp.getStatus()).isEqualTo(200);

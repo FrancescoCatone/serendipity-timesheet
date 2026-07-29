@@ -2,6 +2,8 @@ package com.serendipity.backend.service;
 
 import com.serendipity.backend.export.TimesheetSnapshotAssembler;
 import com.serendipity.backend.model.dto.TimesheetSnapshotDto;
+import com.serendipity.backend.model.dto.AccontiSummaryDto;
+import com.serendipity.backend.model.dto.AccontoMovimentoDto;
 import com.serendipity.backend.model.dto.TotaliDto;
 import com.serendipity.backend.model.entity.Cliente;
 import com.serendipity.backend.model.entity.Timesheet;
@@ -36,6 +38,8 @@ class TimesheetSnapshotAssemblerTest {
     private TimesheetRigaRepository rigaRepo;
     @Mock
     private CalendarioFestivitaService calendarioFestivitaService;
+    @Mock
+    private AccontiService accontiService;
 
     @InjectMocks
     private TimesheetSnapshotAssembler assembler;
@@ -48,6 +52,7 @@ class TimesheetSnapshotAssemblerTest {
         u.setEmail("x@y.z");
         u.setPassword("hash");
         u.setRuolo(Ruolo.DIPENDENTE);
+        u.setPagaOraria(15.0);
 
         Timesheet t = new Timesheet();
         t.setId(id);
@@ -111,6 +116,30 @@ class TimesheetSnapshotAssemblerTest {
         when(rigaRepo.sumTotaliByTimesheetId(2L)).thenReturn(new TotaliDto(3.5, 105.555));
         when(calendarioFestivitaService.isFestivo(LocalDate.of(2025, 1, 10))).thenReturn(false);
         when(calendarioFestivitaService.isFestivo(LocalDate.of(2025, 1, 11))).thenReturn(true);
+        when(accontiService.summary(123L, 1, 2025)).thenReturn(new AccontiSummaryDto(
+                123L,
+                "Anna",
+                "Bianchi",
+                1,
+                2025,
+                "CHIUSO",
+                new BigDecimal("105.56"),
+                new BigDecimal("20.00"),
+                new BigDecimal("20.00"),
+                new BigDecimal("85.56"),
+                List.of(new AccontoMovimentoDto(
+                        1L,
+                        123L,
+                        "Anna",
+                        "Bianchi",
+                        1,
+                        2025,
+                        new BigDecimal("20.00"),
+                        "Acconto test",
+                        LocalDate.of(2025, 1, 5),
+                        java.time.LocalDateTime.of(2025, 1, 5, 10, 30)
+                ))
+        ));
 
         TimesheetSnapshotDto dto = assembler.build(2L);
 
@@ -134,9 +163,16 @@ class TimesheetSnapshotAssemblerTest {
         // Totali arrotondati
         assertThat(dto.totaleOrario()).isEqualByComparingTo(new BigDecimal("3.50"));
         assertThat(dto.totaleCosto()).isEqualByComparingTo(new BigDecimal("105.56"));
+        assertThat(dto.totaleOre()).isEqualTo(3);
+        assertThat(dto.totaleMinuti()).isEqualTo(30);
+        assertThat(dto.maturatoAcconti()).isEqualByComparingTo(new BigDecimal("105.56"));
+        assertThat(dto.totaleAcconti()).isEqualByComparingTo(new BigDecimal("20.00"));
+        assertThat(dto.saldoResiduo()).isEqualByComparingTo(new BigDecimal("85.56"));
+        assertThat(dto.accontiMovimenti()).hasSize(1);
 
         verify(tsRepo).findById(2L);
         verify(rigaRepo).findByTimesheetIdOrdered(2L);
         verify(rigaRepo).sumTotaliByTimesheetId(2L);
+        verify(accontiService).summary(123L, 1, 2025);
     }
 }

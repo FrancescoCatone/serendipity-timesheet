@@ -1,9 +1,13 @@
-package com.serendipity.backend.model.dto.create;
+package com.serendipity.backend.model.dto.update;
 
 import com.serendipity.backend.model.enums.Ruolo;
-import jakarta.validation.constraints.*;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 
-public class CreaUtenteDto {
+public class AggiornaUtenteDto {
 
     @NotBlank(message = "Il codice fiscale è obbligatorio")
     @Size(min = 16, max = 16, message = "Il codice fiscale deve contenere esattamente 16 caratteri")
@@ -27,7 +31,6 @@ public class CreaUtenteDto {
     @Pattern(regexp = "^[^\\s@]+@[^\\s@]+\\.[^\\s@]{2,}$", message = "Email non valida")
     private String email;
 
-    @NotBlank(message = "La password è obbligatoria")
     @Size(min = 6, max = 50, message = "La password deve contenere almeno 6 caratteri")
     private String password;
 
@@ -73,6 +76,10 @@ public class CreaUtenteDto {
     }
 
     public void setPassword(String password) {
+        if (password == null || password.isBlank()) {
+            this.password = null;
+            return;
+        }
         this.password = password;
     }
 

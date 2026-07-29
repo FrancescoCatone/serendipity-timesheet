@@ -44,13 +44,14 @@ class ReportExportServiceTest {
                 LocalDateTime.now(),
                 List.of(),
                 new BigDecimal("12.50"),
-                new BigDecimal("250.00")
+                new BigDecimal("250.00"),
+                false
         );
 
-        when(assembler.build(10L, 3, 2026)).thenReturn(snapshot);
+        when(assembler.build(10L, 3, 2026, false)).thenReturn(snapshot);
         when(renderer.render(eq("pdf/report-cliente-pdf"), anyMap())).thenReturn(new byte[]{1, 2, 3});
 
-        ReportExportService.ExportFile out = service.exportCliente(10L, 3, 2026);
+        ReportExportService.ExportFile out = service.exportCliente(10L, 3, 2026, false);
 
         assertThat(out.content()).isEqualTo(new byte[]{1, 2, 3});
         assertThat(out.filename()).isEqualTo("report_cliente_acme_spa_marzo_2026.pdf");
@@ -58,14 +59,14 @@ class ReportExportServiceTest {
 
     @Test
     void exportCliente_invalidMese_throws() {
-        assertThatThrownBy(() -> service.exportCliente(10L, 13, 2026))
+        assertThatThrownBy(() -> service.exportCliente(10L, 13, 2026, false))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("mese");
     }
 
     @Test
     void exportCliente_invalidAnno_throws() {
-        assertThatThrownBy(() -> service.exportCliente(10L, 3, 1999))
+        assertThatThrownBy(() -> service.exportCliente(10L, 3, 1999, false))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("anno");
     }
@@ -79,13 +80,14 @@ class ReportExportServiceTest {
                 LocalDateTime.now(),
                 List.of(),
                 new BigDecimal("125.50"),
-                new BigDecimal("2510.00")
+                new BigDecimal("2510.00"),
+                false
         );
 
-        when(assembler.buildAnnual(10L, 2026)).thenReturn(snapshot);
+        when(assembler.buildAnnual(10L, 2026, false)).thenReturn(snapshot);
         when(renderer.render(eq("pdf/report-cliente-annuale-pdf"), anyMap())).thenReturn(new byte[]{7, 8, 9});
 
-        ReportExportService.ExportFile out = service.exportCliente(10L, null, 2026);
+        ReportExportService.ExportFile out = service.exportCliente(10L, null, 2026, false);
 
         assertThat(out.content()).isEqualTo(new byte[]{7, 8, 9});
         assertThat(out.filename()).isEqualTo("report_cliente_acme_spa_2026.pdf");
@@ -93,9 +95,9 @@ class ReportExportServiceTest {
 
     @Test
     void exportCliente_notFound_propagates() {
-        when(assembler.build(99L, 3, 2026)).thenThrow(new EntityNotFoundException("Cliente non trovato"));
+        when(assembler.build(99L, 3, 2026, false)).thenThrow(new EntityNotFoundException("Cliente non trovato"));
 
-        assertThatThrownBy(() -> service.exportCliente(99L, 3, 2026))
+        assertThatThrownBy(() -> service.exportCliente(99L, 3, 2026, false))
                 .isInstanceOf(EntityNotFoundException.class)
                 .hasMessageContaining("Cliente non trovato");
     }
@@ -111,13 +113,14 @@ class ReportExportServiceTest {
                 LocalDateTime.now(),
                 List.of(),
                 BigDecimal.ONE,
-                BigDecimal.ONE
+                BigDecimal.ONE,
+                false
         );
 
-        when(assembler.build(10L, 3, 2026)).thenReturn(snapshot);
+        when(assembler.build(10L, 3, 2026, false)).thenReturn(snapshot);
         when(renderer.render(eq("pdf/report-cliente-pdf"), anyMap())).thenReturn(new byte[0]);
 
-        assertThatThrownBy(() -> service.exportCliente(10L, 3, 2026))
+        assertThatThrownBy(() -> service.exportCliente(10L, 3, 2026, false))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("PDF");
     }

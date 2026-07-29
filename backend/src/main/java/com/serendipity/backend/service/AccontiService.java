@@ -6,6 +6,7 @@ import com.serendipity.backend.model.dto.create.CreaAccontoMovimentoDto;
 import com.serendipity.backend.model.entity.AccontoMovimento;
 import com.serendipity.backend.model.entity.Timesheet;
 import com.serendipity.backend.model.entity.Utente;
+import com.serendipity.backend.model.enums.AccontoMovimentoTipo;
 import com.serendipity.backend.model.enums.TimesheetStato;
 import com.serendipity.backend.repository.AccontoMovimentoRepository;
 import com.serendipity.backend.repository.TimesheetRepository;
@@ -86,6 +87,7 @@ public class AccontiService {
         entity.setUtente(utente);
         entity.setMese(dto.getMese());
         entity.setAnno(dto.getAnno());
+        entity.setTipo(AccontoMovimentoTipo.ACCONTO);
         entity.setImporto(scale(dto.getImporto()));
         entity.setNote(dto.getNote() == null || dto.getNote().isBlank() ? null : dto.getNote().trim());
         entity.setDataMovimento(dto.getDataMovimento());

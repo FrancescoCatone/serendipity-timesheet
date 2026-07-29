@@ -273,8 +273,7 @@ public class TimesheetService {
             throw new IllegalStateException("Puoi confermare solo un timesheet APERTO");
         }
 
-        ensureRequiredDaysCovered(ts);
-        createMissingHolidayRows(ts);
+        createMissingNonLavoratoRows(ts);
 
         ts.setStato(TimesheetStato.CONFERMATO);
         Timesheet saved = timesheetRepository.save(ts);
@@ -439,50 +438,28 @@ public class TimesheetService {
         return ts;
     }
 
-    private void ensureRequiredDaysCovered(Timesheet ts) {
-        YearMonth yearMonth = YearMonth.of(ts.getAnno(), ts.getMese());
-        Set<LocalDate> compiledDates = rigaRepository.findDistinctDatesByTimesheetId(ts.getId()).stream()
-                .collect(Collectors.toSet());
-
-        List<LocalDate> missingDates = Stream.iterate(
-                        yearMonth.atDay(1),
-                        date -> !date.isAfter(yearMonth.atEndOfMonth()),
-                        date -> date.plusDays(1)
-                )
-                .filter(date -> !calendarioFestivitaService.isFestivo(date))
-                .filter(date -> !compiledDates.contains(date))
-                .toList();
-
-        if (!missingDates.isEmpty()) {
-            throw new IllegalStateException(
-                    "Non puoi confermare il timesheet: ci sono ancora giorni feriali del mese non compilati"
-            );
-        }
-    }
-
-    private void createMissingHolidayRows(Timesheet ts) {
+    private void createMissingNonLavoratoRows(Timesheet ts) {
         YearMonth yearMonth = YearMonth.of(ts.getAnno(), ts.getMese());
         Set<LocalDate> compiledDates = rigaRepository.findDistinctDatesByTimesheetId(ts.getId()).stream()
                 .collect(Collectors.toSet());
         Cliente nonLavoratoCliente = clienteRepository.findByNomeIgnoreCase(SystemClienti.NON_LAVORATO)
                 .orElseThrow(() -> new EntityNotFoundException("Cliente di sistema NON LAVORATO non trovato"));
 
-        List<TimesheetRiga> missingHolidayRows = Stream.iterate(
+        List<TimesheetRiga> missingRows = Stream.iterate(
                         yearMonth.atDay(1),
                         date -> !date.isAfter(yearMonth.atEndOfMonth()),
                         date -> date.plusDays(1)
                 )
-                .filter(calendarioFestivitaService::isFestivo)
                 .filter(date -> !compiledDates.contains(date))
-                .map(date -> buildHolidayRow(ts, nonLavoratoCliente, date))
+                .map(date -> buildNonLavoratoRow(ts, nonLavoratoCliente, date))
                 .toList();
 
-        if (!missingHolidayRows.isEmpty()) {
-            rigaRepository.saveAll(missingHolidayRows);
+        if (!missingRows.isEmpty()) {
+            rigaRepository.saveAll(missingRows);
         }
     }
 
-    private TimesheetRiga buildHolidayRow(Timesheet ts, Cliente cliente, LocalDate date) {
+    private TimesheetRiga buildNonLavoratoRow(Timesheet ts, Cliente cliente, LocalDate date) {
         TimesheetRiga row = new TimesheetRiga();
         row.setTimesheet(ts);
         row.setCliente(cliente);

@@ -541,9 +541,6 @@ class TimesheetServiceTest {
                 LocalDate.of(2025, 10, 30),
                 LocalDate.of(2025, 10, 31)
         ));
-        when(calendarioFestivitaService.isFestivo(any(LocalDate.class))).thenAnswer(inv ->
-                inv.<LocalDate>getArgument(0).getDayOfWeek().getValue() == 7
-        );
         Cliente nonLavorato = new Cliente();
         nonLavorato.setNome(SystemClienti.NON_LAVORATO);
         nonLavorato.setTariffaOraria(0);
@@ -562,7 +559,7 @@ class TimesheetServiceTest {
     }
 
     @Test
-    void conferma_illegal_whenRequiredDayMissing() {
+    void conferma_autoCompletesMissingWorkingDaysAsNonLavorato() {
         authAsUser();
         stubCurrentUserLookupAsUser();
 
@@ -572,11 +569,22 @@ class TimesheetServiceTest {
                 LocalDate.of(2025, 10, 1),
                 LocalDate.of(2025, 10, 2)
         ));
-        when(calendarioFestivitaService.isFestivo(any(LocalDate.class))).thenReturn(false);
+        Cliente nonLavorato = new Cliente();
+        nonLavorato.setNome(SystemClienti.NON_LAVORATO);
+        nonLavorato.setTariffaOraria(0);
+        when(clienteRepository.findByNomeIgnoreCase(SystemClienti.NON_LAVORATO)).thenReturn(Optional.of(nonLavorato));
 
-        assertThatThrownBy(() -> service.conferma(1L))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("giorni feriali del mese non compilati");
+        var saved = ts(1L, 10, user, TimesheetStato.CONFERMATO);
+        when(timesheetRepository.save(any(Timesheet.class))).thenReturn(saved);
+        when(mapper.toDto(saved)).thenReturn(dtoFrom(saved));
+
+        var out = service.conferma(1L);
+
+        assertThat(out.stato()).isEqualTo(TimesheetStato.CONFERMATO.name());
+        verify(rigaRepository).saveAll(argThat(rows -> {
+            List<?> list = (List<?>) rows;
+            return list.size() == 29;
+        }));
     }
 
     @Test

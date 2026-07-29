@@ -81,8 +81,14 @@ class TimesheetExportServiceTest {
                 2025,
                 LocalDateTime.now(),
                 List.of(),
+                0,
+                0,
                 BigDecimal.ZERO,
-                BigDecimal.ZERO
+                BigDecimal.ZERO,
+                BigDecimal.ZERO,
+                BigDecimal.ZERO,
+                BigDecimal.ZERO,
+                List.of()
         );
     }
 

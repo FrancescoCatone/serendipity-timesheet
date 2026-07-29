@@ -3,6 +3,7 @@ package com.serendipity.backend.controller;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.serendipity.backend.model.dto.create.CreaUtenteDto;
+import com.serendipity.backend.model.dto.update.AggiornaUtenteDto;
 import com.serendipity.backend.model.enums.Ruolo;
 import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.Test;
@@ -40,6 +41,17 @@ public class UtenteControllerIntegrationTest {
         dto.setCodiceFiscale("TSTADM85T10A562Y");
         dto.setEmail("admin.test@serendipity.com");
         dto.setPassword("AdminTest123!");
+        dto.setRuolo(Ruolo.ADMIN);
+        return dto;
+    }
+
+    private AggiornaUtenteDto buildValidUpdateDto() {
+        AggiornaUtenteDto dto = new AggiornaUtenteDto();
+        dto.setNome("TestAdmin");
+        dto.setCognome("User");
+        dto.setCodiceFiscale("TSTADM85T10A562Y");
+        dto.setEmail("admin.test@serendipity.com");
+        dto.setPassword("");
         dto.setRuolo(Ruolo.ADMIN);
         return dto;
     }
@@ -131,11 +143,12 @@ public class UtenteControllerIntegrationTest {
         Map<String, Object> utenteCreato = (Map<String, Object>) responseMap.get("data");
         Integer id = (Integer) utenteCreato.get("id");
 
-        dto.setNome("AdminUpdated");
+        AggiornaUtenteDto updateDto = buildValidUpdateDto();
+        updateDto.setNome("AdminUpdated");
 
         mockMvc.perform(put("/api/utenti/" + id)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(dto)))
+                        .content(objectMapper.writeValueAsString(updateDto)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").value("Utente aggiornato con successo"));
     }
@@ -194,6 +207,7 @@ public class UtenteControllerIntegrationTest {
         dto.setEmail("user.one@serendipity.com");
         dto.setCodiceFiscale("USRONE85T10A562Z");
         dto.setRuolo(Ruolo.DIPENDENTE);
+        dto.setPagaOraria(12.0);
 
         MvcResult createRes = mockMvc.perform(post("/api/utenti")
                         .with(user("admin").roles("ADMIN"))
@@ -234,6 +248,7 @@ public class UtenteControllerIntegrationTest {
         a.setEmail("user.a@serendipity.com");
         a.setCodiceFiscale("USERA185T10A562X");
         a.setRuolo(Ruolo.DIPENDENTE);
+        a.setPagaOraria(12.0);
         MvcResult resA = mockMvc.perform(post("/api/utenti")
                         .with(user("admin").roles("ADMIN"))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -249,6 +264,7 @@ public class UtenteControllerIntegrationTest {
         b.setEmail("user.b@serendipity.com");
         b.setCodiceFiscale("USERB185T10A562W");
         b.setRuolo(Ruolo.DIPENDENTE);
+        b.setPagaOraria(12.0);
         mockMvc.perform(post("/api/utenti")
                         .with(user("admin").roles("ADMIN"))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -281,12 +297,15 @@ public class UtenteControllerIntegrationTest {
                 result.getResponse().getContentAsString(), new TypeReference<Map<String, Object>>() {
                 }).get("data")).get("id");
 
-        dto.setNome("Updated");
+        AggiornaUtenteDto updateDto = buildValidUpdateDto();
+        updateDto.setEmail("system.operator@serendipitycoop.it");
+        updateDto.setCodiceFiscale("SYSOPR85T10A562Q");
+        updateDto.setNome("Updated");
 
         mockMvc.perform(put("/api/utenti/{id}", id)
                         .with(user("raffaele.vermiglio@serendipitycoop.it").roles("ADMIN"))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(dto)))
+                        .content(objectMapper.writeValueAsString(updateDto)))
                 .andExpect(status().isForbidden());
     }
 

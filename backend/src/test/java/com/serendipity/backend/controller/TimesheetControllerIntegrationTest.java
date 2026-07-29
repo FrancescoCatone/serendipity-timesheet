@@ -296,8 +296,11 @@ public class TimesheetControllerIntegrationTest {
         persistRiga(ts, cliente, LocalDate.of(2025, 10, 1), 1, 0, 1.0, 10.0);
 
         mockMvc.perform(put("/api/timesheets/{id}/conferma", ts.getId()))
-                .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("giorni feriali del mese non compilati")));
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("Timesheet confermato"))
+                .andExpect(jsonPath("$.data.stato").value("CONFERMATO"));
+
+        assertThat(rigaRepository.findByTimesheetIdOrdered(ts.getId())).hasSize(31);
     }
 
     @Test

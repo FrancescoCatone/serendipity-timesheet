@@ -5,6 +5,7 @@ import com.serendipity.backend.model.dto.ResponseMessage;
 import com.serendipity.backend.model.dto.UtenteDto;
 import com.serendipity.backend.model.dto.create.CreaUtenteDto;
 import com.serendipity.backend.model.dto.update.AggiornaPasswordDto;
+import com.serendipity.backend.model.dto.update.AggiornaUtenteDto;
 import com.serendipity.backend.service.UtenteService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -85,7 +86,7 @@ public class UtenteController {
      */
     @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/{id}")
-    public ResponseEntity<ResponseMessage> aggiornaUtente(@PathVariable Long id, @RequestBody @Valid CreaUtenteDto dto) {
+    public ResponseEntity<ResponseMessage> aggiornaUtente(@PathVariable Long id, @RequestBody @Valid AggiornaUtenteDto dto) {
         ResponseMessage response = utenteService.aggiornaUtente(id, dto);
         return ResponseEntity.status(response.getStatus()).body(response);
     }

@@ -14,7 +14,8 @@ public record ReportClientePdfSnapshotDto(
         LocalDateTime dataGenerazione,
         List<Riga> righe,
         BigDecimal totaleOrario,
-        BigDecimal totaleCosto
+        BigDecimal totaleCosto,
+        boolean mostraCosto
 ) {
     public record Riga(
             LocalDate data,

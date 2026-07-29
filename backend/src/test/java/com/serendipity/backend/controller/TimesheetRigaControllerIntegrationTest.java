@@ -88,6 +88,7 @@ public class TimesheetRigaControllerIntegrationTest {
             u.setEmail("user@serendipity.com");
             u.setPassword(passwordEncoder.encode("UserTest123!"));
             u.setRuolo(Ruolo.DIPENDENTE);
+            u.setPagaOraria(12.0);
             return utenteRepository.save(u);
         });
 

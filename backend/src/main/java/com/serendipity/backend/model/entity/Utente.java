@@ -24,6 +24,9 @@ public class Utente {
     @Enumerated(EnumType.STRING)
     private Ruolo ruolo;
 
+    @Column(name = "paga_oraria")
+    private Double pagaOraria;
+
     public Long getId() {
         return id;
     }
@@ -38,6 +41,14 @@ public class Utente {
 
     public void setRuolo(Ruolo ruolo) {
         this.ruolo = ruolo;
+    }
+
+    public Double getPagaOraria() {
+        return pagaOraria;
+    }
+
+    public void setPagaOraria(Double pagaOraria) {
+        this.pagaOraria = pagaOraria;
     }
 
     public String getPassword() {
@@ -83,7 +94,7 @@ public class Utente {
     public Utente() {
     }
 
-    public Utente(Long id, String codiceFiscale, String nome, String cognome, String email, String password, Ruolo ruolo) {
+    public Utente(Long id, String codiceFiscale, String nome, String cognome, String email, String password, Ruolo ruolo, Double pagaOraria) {
         this.id = id;
         this.codiceFiscale = codiceFiscale;
         this.nome = nome;
@@ -91,5 +102,6 @@ public class Utente {
         this.email = email;
         this.password = password;
         this.ruolo = ruolo;
+        this.pagaOraria = pagaOraria;
     }
 }

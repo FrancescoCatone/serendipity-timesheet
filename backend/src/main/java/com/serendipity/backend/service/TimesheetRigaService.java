@@ -6,7 +6,9 @@ import com.serendipity.backend.model.dto.create.CreaTimesheetRigaDto;
 import com.serendipity.backend.model.entity.Cliente;
 import com.serendipity.backend.model.entity.Timesheet;
 import com.serendipity.backend.model.entity.TimesheetRiga;
+import com.serendipity.backend.model.entity.Utente;
 import com.serendipity.backend.model.enums.TimesheetStato;
+import com.serendipity.backend.model.enums.Ruolo;
 import com.serendipity.backend.repository.ClienteRepository;
 import com.serendipity.backend.repository.TimesheetRepository;
 import com.serendipity.backend.repository.TimesheetRigaRepository;
@@ -21,6 +23,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.List;
 
 @Service
@@ -168,7 +172,7 @@ public class TimesheetRigaService {
                        int ore,
                        int minuti) {
         double orarioCalcolato = calcOrario(ore, minuti);
-        double costoCalcolato = calcCosto(orarioCalcolato, cliente.getTariffaOraria());
+        double costoCalcolato = calcCosto(orarioCalcolato, resolvePagaOrariaDipendente(ts));
 
         entity.setTimesheet(ts);
         entity.setCliente(cliente);
@@ -323,10 +327,18 @@ public class TimesheetRigaService {
                 .doubleValue();
     }
 
-    private double calcCosto(double orario, double tariffaOrariaCliente) {
-        return new java.math.BigDecimal(orario)
-                .multiply(new java.math.BigDecimal(tariffaOrariaCliente))
-                .setScale(2, java.math.RoundingMode.HALF_UP)
+    private double calcCosto(double orario, double pagaOrariaDipendente) {
+        return BigDecimal.valueOf(orario)
+                .multiply(BigDecimal.valueOf(pagaOrariaDipendente))
+                .setScale(2, RoundingMode.HALF_UP)
                 .doubleValue();
+    }
+
+    private double resolvePagaOrariaDipendente(Timesheet ts) {
+        Utente utente = ts.getUtente();
+        if (utente == null || utente.getRuolo() != Ruolo.DIPENDENTE || utente.getPagaOraria() == null || utente.getPagaOraria() <= 0) {
+            throw new IllegalStateException("Il dipendente associato al timesheet non ha una paga oraria valida");
+        }
+        return utente.getPagaOraria();
     }
 }

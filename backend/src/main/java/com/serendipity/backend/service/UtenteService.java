@@ -6,9 +6,12 @@ import com.serendipity.backend.model.dto.ResponseMessage;
 import com.serendipity.backend.model.dto.UtenteDto;
 import com.serendipity.backend.model.dto.create.CreaUtenteDto;
 import com.serendipity.backend.model.dto.update.AggiornaPasswordDto;
+import com.serendipity.backend.model.dto.update.AggiornaUtenteDto;
 import com.serendipity.backend.model.entity.Utente;
 import com.serendipity.backend.model.enums.Ruolo;
+import com.serendipity.backend.model.entity.TimesheetRiga;
 import com.serendipity.backend.repository.TimesheetRepository;
+import com.serendipity.backend.repository.TimesheetRigaRepository;
 import com.serendipity.backend.repository.UtenteRepository;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,6 +28,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 
 @Service
 public class UtenteService {
@@ -43,6 +48,9 @@ public class UtenteService {
 
     @Autowired
     private TimesheetRepository timesheetRepository;
+
+    @Autowired
+    private TimesheetRigaRepository timesheetRigaRepository;
 
     @Autowired
     private AdminNotificationService notificationService;
@@ -99,6 +107,7 @@ public class UtenteService {
         nuovoUtente.setEmail(dto.getEmail().toLowerCase().trim());
         nuovoUtente.setPassword(passwordEncoder.encode(dto.getPassword()));
         nuovoUtente.setRuolo(dto.getRuolo());
+        nuovoUtente.setPagaOraria(normalizePagaOraria(dto.getRuolo(), dto.getPagaOraria()));
 
         Utente saved = utenteRepository.save(nuovoUtente);
         notificationService.notifyUtenteCreated(getCurrentUsernameSafe(), saved);
@@ -128,7 +137,7 @@ public class UtenteService {
      * @param dto il DTO contenente i nuovi dati dell'utente
      * @return un messaggio di risposta con lo stato e il messaggio di successo
      */
-    public ResponseMessage aggiornaUtente(Long id, CreaUtenteDto dto) {
+    public ResponseMessage aggiornaUtente(Long id, AggiornaUtenteDto dto) {
         Utente utente = utenteRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Utente non trovato"));
         validateEmailFormat(dto.getEmail());
@@ -149,10 +158,14 @@ public class UtenteService {
         utente.setCognome(dto.getCognome());
         utente.setCodiceFiscale(dto.getCodiceFiscale());
         utente.setEmail(dto.getEmail().toLowerCase());
-        utente.setPassword(passwordEncoder.encode(dto.getPassword()));
         utente.setRuolo(dto.getRuolo());
+        utente.setPagaOraria(normalizePagaOraria(dto.getRuolo(), dto.getPagaOraria()));
+        if (dto.getPassword() != null && !dto.getPassword().isBlank()) {
+            utente.setPassword(passwordEncoder.encode(dto.getPassword()));
+        }
 
         utenteRepository.save(utente);
+        recalculateTimesheetCosts(utente);
         notificationService.notifyUtenteUpdated(getCurrentUsernameSafe(), before, snapshotUtente(utente));
 
         return new ResponseMessage(200, "Utente aggiornato con successo");
@@ -226,6 +239,11 @@ public class UtenteService {
             String v = (String) updates.get("ruolo");
             u.setRuolo(Ruolo.valueOf(v)); // lancia se non valido
         }
+        if (updates.containsKey("pagaOraria")) {
+            Object rawValue = updates.get("pagaOraria");
+            Double value = rawValue == null ? null : Double.valueOf(String.valueOf(rawValue));
+            u.setPagaOraria(value);
+        }
         // password (opzionale)
         if (updates.containsKey("password")) {
             String raw = (String) updates.get("password");
@@ -234,7 +252,9 @@ public class UtenteService {
             }
         }
 
+        u.setPagaOraria(normalizePagaOraria(u.getRuolo(), u.getPagaOraria()));
         utenteRepository.save(u);
+        recalculateTimesheetCosts(u);
         notificationService.notifyUtenteUpdated(getCurrentUsernameSafe(), before, snapshotUtente(u));
         return new ResponseMessage(200, "Utente aggiornato", null, null);
     }
@@ -351,7 +371,40 @@ public class UtenteService {
         copy.setEmail(source.getEmail());
         copy.setPassword(source.getPassword());
         copy.setRuolo(source.getRuolo());
+        copy.setPagaOraria(source.getPagaOraria());
         return copy;
+    }
+
+    private Double normalizePagaOraria(Ruolo ruolo, Double pagaOraria) {
+        if (ruolo != Ruolo.DIPENDENTE) {
+            return null;
+        }
+        if (pagaOraria == null || pagaOraria <= 0) {
+            throw new IllegalArgumentException("La paga oraria del dipendente deve essere maggiore di zero");
+        }
+        return BigDecimal.valueOf(pagaOraria)
+                .setScale(2, RoundingMode.HALF_UP)
+                .doubleValue();
+    }
+
+    private void recalculateTimesheetCosts(Utente utente) {
+        if (utente == null || utente.getId() == null || utente.getRuolo() != Ruolo.DIPENDENTE || utente.getPagaOraria() == null) {
+            return;
+        }
+
+        List<TimesheetRiga> righe = timesheetRigaRepository.findByTimesheetUtenteId(utente.getId());
+        if (righe.isEmpty()) {
+            return;
+        }
+
+        BigDecimal pagaOraria = BigDecimal.valueOf(utente.getPagaOraria());
+        for (TimesheetRiga riga : righe) {
+            BigDecimal costo = BigDecimal.valueOf(riga.getOrario())
+                    .multiply(pagaOraria)
+                    .setScale(2, RoundingMode.HALF_UP);
+            riga.setCostoOrario(costo.doubleValue());
+        }
+        timesheetRigaRepository.saveAll(righe);
     }
 
 }

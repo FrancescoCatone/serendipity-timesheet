@@ -11,7 +11,8 @@ public record ReportClientePdfAnnualSnapshotDto(
         LocalDateTime dataGenerazione,
         List<MeseReport> mesi,
         BigDecimal totaleOrario,
-        BigDecimal totaleCosto
+        BigDecimal totaleCosto,
+        boolean mostraCosto
 ) {
     public record MeseReport(
             int mese,

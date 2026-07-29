@@ -93,6 +93,13 @@ class TimesheetRigaServiceTest {
         } catch (Exception ignore) {
         }
         u.setEmail(email);
+        if (email.startsWith("admin")) {
+            u.setRuolo(com.serendipity.backend.model.enums.Ruolo.ADMIN);
+            u.setPagaOraria(null);
+        } else {
+            u.setRuolo(com.serendipity.backend.model.enums.Ruolo.DIPENDENTE);
+            u.setPagaOraria(12.0);
+        }
     }
 
     private Timesheet ts(Long id, Utente owner, TimesheetStato stato) {

@@ -103,6 +103,20 @@
             vertical-align: middle;
         }
 
+        .section-title {
+            margin: 6mm 0 2mm;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .summary-grid {
+            margin-top: 2mm;
+        }
+
+        .summary-grid div {
+            margin-bottom: 1mm;
+        }
+
     </style>
 </head>
 <body>
@@ -143,12 +157,43 @@
 
         <tfoot>
         <tr>
-            <td colspan="4" class="right">TOTALI</td>
+            <td colspan="2" class="right">TOTALI</td>
+            <td class="center" th:text="${ts.totaleOre}"></td>
+            <td class="center" th:text="${ts.totaleMinuti}"></td>
             <td class="right" th:text="${#numbers.formatDecimal(ts.totaleOrario, 1, 2, 'COMMA')}"></td>
             <td class="right" th:text="${#numbers.formatDecimal(ts.totaleCosto, 1, 2, 'COMMA')}"></td>
         </tr>
         </tfoot>
     </table>
+
+    <div th:if="${!#lists.isEmpty(ts.accontiMovimenti)}">
+        <div class="section-title">Acconti</div>
+
+        <table>
+            <thead>
+            <tr>
+                <th class="center">Data movimento</th>
+                <th class="right">Importo (&#8364;)</th>
+                <th>Note</th>
+                <th class="center">Registrato il</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="movimento : ${ts.accontiMovimenti}">
+                <td class="center" th:text="${#temporals.format(movimento.dataMovimento, 'dd/MM/yyyy')}"></td>
+                <td class="right" th:text="${#numbers.formatDecimal(movimento.importo, 1, 2, 'COMMA')}"></td>
+                <td th:text="${#strings.defaultString(movimento.note, '—')}"></td>
+                <td class="center" th:text="${#temporals.format(movimento.registratoIl, 'dd/MM/yyyy HH:mm')}"></td>
+            </tr>
+            </tbody>
+        </table>
+
+        <div class="summary-grid">
+            <div><strong>Maturato:</strong> <span th:text="${#numbers.formatDecimal(ts.maturatoAcconti, 1, 2, 'COMMA')}"></span> EUR</div>
+            <div><strong>Totale acconti:</strong> <span th:text="${#numbers.formatDecimal(ts.totaleAcconti, 1, 2, 'COMMA')}"></span> EUR</div>
+            <div><strong>Saldo residuo:</strong> <span th:text="${#numbers.formatDecimal(ts.saldoResiduo, 1, 2, 'COMMA')}"></span> EUR</div>
+        </div>
+    </div>
 </div>
 </body>
 </html>

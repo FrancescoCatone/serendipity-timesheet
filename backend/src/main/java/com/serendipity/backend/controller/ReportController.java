@@ -54,9 +54,10 @@ public class ReportController {
     public ResponseEntity<byte[]> exportReportCliente(
             @RequestParam Long clienteId,
             @RequestParam(required = false) Integer mese,
-            @RequestParam int anno
+            @RequestParam int anno,
+            @RequestParam(defaultValue = "false") boolean mostraCosto
     ) {
-        var file = exportService.exportCliente(clienteId, mese, anno);
+        var file = exportService.exportCliente(clienteId, mese, anno, mostraCosto);
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + file.filename() + "\"")
                 .contentType(MediaType.APPLICATION_PDF)
