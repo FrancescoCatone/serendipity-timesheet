@@ -65,6 +65,7 @@ export async function exportReportClientePdfApi(params: {
     clienteId: number;
     mese?: number;
     anno: number;
+    mostraCosto?: boolean;
 }): Promise<{ blob: Blob; filename: string }> {
     const response = await http.get<Blob>('/report/cliente/export', {
         params,
