@@ -98,7 +98,7 @@ function AccontiPage() {
         setForm((prev) => ({ ...prev, [name]: value }));
     };
 
-    const loadSummary = async () => {
+    const loadSummary = async (options?: { silentSuccess?: boolean }) => {
         if (!filters.utenteId || !filters.mese || !filters.anno) {
             toast.error('Seleziona dipendente, mese e anno');
             return;
@@ -112,7 +112,9 @@ function AccontiPage() {
                 anno: Number(filters.anno),
             });
             setSummary(response.data ?? null);
-            toast.success(response.message || 'Riepilogo acconti generato');
+            if (!options?.silentSuccess) {
+                toast.success(response.message || 'Riepilogo acconti generato');
+            }
         } catch (error: unknown) {
             setSummary(null);
             toast.error(getErrorMessage(error, 'Errore durante il caricamento del riepilogo acconti'));
@@ -150,7 +152,7 @@ function AccontiPage() {
                 importo: '',
                 note: '',
             }));
-            await loadSummary();
+            await loadSummary({ silentSuccess: true });
         } catch (error: unknown) {
             toast.error(getErrorMessage(error, 'Errore durante la registrazione del movimento'));
         } finally {
@@ -179,7 +181,7 @@ function AccontiPage() {
             const response = await deleteAccontoMovimentoApi(movimentoDaEliminare.id);
             toast.success(response.message || 'Movimento eliminato');
             setMovimentoDaEliminare(null);
-            await loadSummary();
+            await loadSummary({ silentSuccess: true });
         } catch (error: unknown) {
             toast.error(getErrorMessage(error, 'Errore durante l’eliminazione del movimento'));
         } finally {

@@ -17,6 +17,7 @@ function NuovoUtentePage() {
         email: string;
         password: string;
         ruolo: Ruolo;
+        pagaOraria: string;
     }>({
         codiceFiscale: '',
         nome: '',
@@ -24,6 +25,7 @@ function NuovoUtentePage() {
         email: '',
         password: '',
         ruolo: 'DIPENDENTE',
+        pagaOraria: '',
     });
 
     const [loading, setLoading] = useState(false);
@@ -36,6 +38,7 @@ function NuovoUtentePage() {
         setForm((prev) => ({
             ...prev,
             [name]: name === 'codiceFiscale' ? value.toUpperCase() : value,
+            ...(name === 'ruolo' && value !== 'DIPENDENTE' ? { pagaOraria: '' } : {}),
         }));
     };
 
@@ -47,6 +50,7 @@ function NuovoUtentePage() {
             email,
             password: plainTextValue,
             ruolo,
+            pagaOraria,
         } = form;
 
         const cf = codiceFiscale.trim().toUpperCase();
@@ -74,6 +78,13 @@ function NuovoUtentePage() {
             return "Inserisci un'email valida completa di dominio finale, ad esempio nome@dominio.it";
         }
 
+        if (ruolo === 'DIPENDENTE') {
+            const parsedPagaOraria = Number(pagaOraria);
+            if (!pagaOraria || Number.isNaN(parsedPagaOraria) || parsedPagaOraria <= 0) {
+                return 'Inserisci una paga oraria valida maggiore di zero';
+            }
+        }
+
         return null;
     };
     const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -95,6 +106,7 @@ function NuovoUtentePage() {
                 email: form.email.trim(),
                 password: form.password,
                 ruolo: form.ruolo,
+                pagaOraria: form.ruolo === 'DIPENDENTE' ? Number(form.pagaOraria) : null,
             });
 
             toast.success(response.message || 'Utente creato con successo');
@@ -195,6 +207,21 @@ function NuovoUtentePage() {
                                 <option value="ADMIN">ADMIN</option>
                                 <option value="DIPENDENTE">DIPENDENTE</option>
                             </select>
+                        </div>
+
+                        <div className="form-group">
+                            <label htmlFor="pagaOraria">Paga oraria</label>
+                            <input
+                                id="pagaOraria"
+                                name="pagaOraria"
+                                type="number"
+                                min="0"
+                                step="0.50"
+                                value={form.pagaOraria}
+                                onChange={handleChange}
+                                disabled={loading || form.ruolo !== 'DIPENDENTE'}
+                                placeholder="Inserisci la paga oraria"
+                            />
                         </div>
                     </div>
 

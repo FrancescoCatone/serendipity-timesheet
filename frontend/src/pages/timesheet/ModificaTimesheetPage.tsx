@@ -326,6 +326,32 @@ function ModificaTimesheetPage() {
         }));
     };
 
+    const handleMinutiFocus = () => {
+        if (isNonLavoratoSelected || rigaForm.minuti !== '0') {
+            return;
+        }
+
+        setRigaForm((prev) => ({
+            ...prev,
+            minuti: '',
+        }));
+        setRigaFormErrors((prev) => ({
+            ...prev,
+            minuti: undefined,
+        }));
+    };
+
+    const handleMinutiBlur = () => {
+        if (isNonLavoratoSelected || rigaForm.minuti !== '') {
+            return;
+        }
+
+        setRigaForm((prev) => ({
+            ...prev,
+            minuti: '0',
+        }));
+    };
+
     const validateForm = (): string | null => {
         const mese = Number(form.mese);
         const anno = Number(form.anno);
@@ -717,10 +743,10 @@ function ModificaTimesheetPage() {
                         <div>
                             <h2 style={{ margin: 0 }}>Copertura del mese</h2>
                             <p className="page-subtitle" style={{ marginTop: '0.35rem' }}>
-                                Per confermare il timesheet, tutti i giorni non festivi di {getMonthLabel(timesheetInfo.mese)} {timesheetInfo.anno} devono avere almeno una riga.
+                                Se confermi il timesheet con giorni del mese ancora vuoti, il sistema li completerà automaticamente come <strong>{NON_LAVORATO_CLIENT_NAME}</strong>.
                             </p>
                             <p className="page-subtitle" style={{ marginTop: '0.35rem' }}>
-                                Se non hai lavorato in un giorno feriale, inserisci una riga con cliente <strong>{NON_LAVORATO_CLIENT_NAME}</strong> e valori <strong>0h 0m</strong>.
+                                Se preferisci, puoi comunque inserire manualmente una riga con cliente <strong>{NON_LAVORATO_CLIENT_NAME}</strong> e valori <strong>0h 0m</strong>.
                             </p>
                             <p className="page-subtitle" style={{ marginTop: '0.35rem' }}>
                                 I giorni festivi restano facoltativi: sono evidenziati in tabella ma non bloccano la conferma.
@@ -730,7 +756,7 @@ function ModificaTimesheetPage() {
                         <div className={missingRequiredDates.length === 0 ? 'coverage-ok' : 'coverage-missing'}>
                             {missingRequiredDates.length === 0
                                 ? 'Copertura completa: il mese è pronto per la conferma.'
-                                : `Giorni non festivi ancora da compilare: ${missingRequiredDates.length}`}
+                                : `Giorni non festivi ancora vuoti: ${missingRequiredDates.length}. Verranno completati come NON LAVORATO alla conferma.`}
                         </div>
 
                         {missingRequiredDates.length > 0 ? (
@@ -923,6 +949,8 @@ function ModificaTimesheetPage() {
                                 step={1}
                                 value={rigaForm.minuti}
                                 onChange={handleRigaChange}
+                                onFocus={handleMinutiFocus}
+                                onBlur={handleMinutiBlur}
                                 disabled={isReadOnly || righeSaving}
                                 className={rigaFormErrors.minuti ? 'input-error' : ''}
                                 placeholder="Es. 30"

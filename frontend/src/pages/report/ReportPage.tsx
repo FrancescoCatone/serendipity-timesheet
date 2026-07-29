@@ -86,6 +86,7 @@ function ReportPage() {
     const [reportDipendente, setReportDipendente] = useState<ReportDipendenteDto | null>(null);
 
     const [myProfile, setMyProfile] = useState<ProfiloUtenteDto | null>(null);
+    const [mostraCostoPdf, setMostraCostoPdf] = useState(false);
 
     useEffect(() => {
         const loadData = async () => {
@@ -186,6 +187,7 @@ function ReportPage() {
             utenteId: isAdmin ? '' : (myProfile?.id ? String(myProfile.id) : ''),
             data: '',
         });
+        setMostraCostoPdf(false);
         resetResults();
     };
 
@@ -283,6 +285,7 @@ function ReportPage() {
                 clienteId: Number(filters.clienteId),
                 mese: filters.mese ? Number(filters.mese) : undefined,
                 anno: Number(filters.anno),
+                mostraCosto: mostraCostoPdf,
             });
 
             const url = window.URL.createObjectURL(blob);
@@ -428,6 +431,26 @@ function ReportPage() {
                 </div>
 
                 <div className="form-actions">
+                    {isAdmin && mode === 'cliente' ? (
+                        <label
+                            style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '0.5rem',
+                                marginRight: 'auto',
+                                fontWeight: 600,
+                            }}
+                        >
+                            <input
+                                type="checkbox"
+                                checked={mostraCostoPdf}
+                                onChange={(event) => setMostraCostoPdf(event.target.checked)}
+                                disabled={loadingSupportData || loadingReport || exportingPdf}
+                            />
+                            Mostra costo nel PDF
+                        </label>
+                    ) : null}
+
                     <button
                         type="button"
                         className="secondary-button"

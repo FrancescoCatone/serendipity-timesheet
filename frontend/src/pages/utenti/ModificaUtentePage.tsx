@@ -17,6 +17,7 @@ function ModificaUtentePage() {
         email: '',
         password: '',
         ruolo: 'DIPENDENTE' as 'ADMIN' | 'DIPENDENTE',
+        pagaOraria: '',
     });
 
     const [loading, setLoading] = useState(true);
@@ -49,6 +50,7 @@ function ModificaUtentePage() {
                     email: utente.email ?? '',
                     password: '',
                     ruolo: utente.ruolo === 'ADMIN' ? 'ADMIN' : 'DIPENDENTE',
+                    pagaOraria: utente.pagaOraria != null ? String(utente.pagaOraria) : '',
                 });
             } catch (error: unknown) {
                 toast.error(getErrorMessage(error, 'Errore durante il caricamento dell’utente'));
@@ -69,6 +71,7 @@ function ModificaUtentePage() {
         setForm((prev) => ({
             ...prev,
             [name]: name === 'codiceFiscale' ? value.toUpperCase() : value,
+            ...(name === 'ruolo' && value !== 'DIPENDENTE' ? { pagaOraria: '' } : {}),
         }));
     };
 
@@ -80,6 +83,7 @@ function ModificaUtentePage() {
             email,
             password: plainTextValue,
             ruolo,
+            pagaOraria,
         } = form;
 
         const cf = codiceFiscale.trim().toUpperCase();
@@ -87,7 +91,7 @@ function ModificaUtentePage() {
         const lastName = cognome.trim();
         const emailValue = email.trim();
 
-        if (!cf || !firstName || !lastName || !emailValue || !plainTextValue || !ruolo) {
+        if (!cf || !firstName || !lastName || !emailValue || !ruolo) {
             return 'Compila tutti i campi obbligatori';
         }
 
@@ -99,12 +103,19 @@ function ModificaUtentePage() {
             return 'Il codice fiscale deve contenere solo lettere maiuscole e numeri';
         }
 
-        if (plainTextValue.length < 6) {
+        if (plainTextValue && plainTextValue.length < 6) {
             return 'La password deve contenere almeno 6 caratteri';
         }
 
         if (!isValidEmail(emailValue)) {
             return "Inserisci un'email valida completa di dominio finale, ad esempio nome@dominio.it";
+        }
+
+        if (ruolo === 'DIPENDENTE') {
+            const parsedPagaOraria = Number(pagaOraria);
+            if (!pagaOraria || Number.isNaN(parsedPagaOraria) || parsedPagaOraria <= 0) {
+                return 'Inserisci una paga oraria valida maggiore di zero';
+            }
         }
 
         return null;
@@ -134,6 +145,7 @@ function ModificaUtentePage() {
                 email: form.email.trim(),
                 password: form.password,
                 ruolo: form.ruolo,
+                pagaOraria: form.ruolo === 'DIPENDENTE' ? Number(form.pagaOraria) : null,
             });
 
             toast.success(response.message || 'Utente aggiornato con successo');
@@ -232,7 +244,7 @@ function ModificaUtentePage() {
                                 value={form.password}
                                 onChange={handleChange}
                                 disabled={saving}
-                                placeholder="Reinserisci la password"
+                                placeholder="Lascia vuoto per non modificarla"
                             />
                         </div>
 
@@ -249,6 +261,21 @@ function ModificaUtentePage() {
                                 <option value="ADMIN">ADMIN</option>
                                 <option value="DIPENDENTE">DIPENDENTE</option>
                             </select>
+                        </div>
+
+                        <div className="form-group">
+                            <label htmlFor="pagaOraria">Paga oraria</label>
+                            <input
+                                id="pagaOraria"
+                                name="pagaOraria"
+                                type="number"
+                                min="0"
+                                step="0.50"
+                                value={form.pagaOraria}
+                                onChange={handleChange}
+                                disabled={saving || form.ruolo !== 'DIPENDENTE'}
+                                placeholder="Inserisci la paga oraria"
+                            />
                         </div>
                     </div>
 

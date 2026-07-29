@@ -7,6 +7,7 @@ export interface UtenteDto {
     cognome: string;
     email: string;
     ruolo: Ruolo;
+    pagaOraria: number | null;
 }
 
 export interface CreaUtenteDto {
@@ -16,6 +17,7 @@ export interface CreaUtenteDto {
     email: string;
     password: string;
     ruolo: Ruolo;
+    pagaOraria?: number | null;
 }
 
 export interface AggiornaPasswordDto {

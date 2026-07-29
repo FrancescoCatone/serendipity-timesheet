@@ -9,6 +9,14 @@ import { getErrorMessage } from '../../utils/error';
 import { isSystemOperatorEmail, SYSTEM_OPERATOR_EMAIL } from '../../utils/systemUsers';
 import type { UtenteDto } from '../../types/utente';
 
+function formatPagaOraria(value: number | null): string {
+    if (value === null || value === undefined) {
+        return '—';
+    }
+
+    return `EUR ${value.toFixed(2)}`;
+}
+
 function sortUtentiWithAdminsFirst(items: UtenteDto[]): UtenteDto[] {
     return [...items].sort((a, b) => {
         const aIsSystemOperator = a.email.trim().toLowerCase() === SYSTEM_OPERATOR_EMAIL;
@@ -151,6 +159,7 @@ function UtentiPage() {
                                     <th>Cognome</th>
                                     <th>Email</th>
                                     <th>Ruolo</th>
+                                    <th>Paga oraria</th>
                                     <th>Azioni</th>
                                 </tr>
                             </thead>
@@ -164,6 +173,7 @@ function UtentiPage() {
                                         <td data-label="Ruolo">
                                             <span className="role-badge">{utente.ruolo}</span>
                                         </td>
+                                        <td data-label="Paga oraria">{formatPagaOraria(utente.pagaOraria)}</td>
                                         <td data-label="Azioni">
                                             <div className="table-actions">
                                                 {canManageUtente(utente) ? (
