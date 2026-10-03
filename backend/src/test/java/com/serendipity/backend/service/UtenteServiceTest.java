@@ -223,6 +223,28 @@ class UtenteServiceTest {
         assertThat(saved.getRuolo()).isEqualTo(Ruolo.ADMIN);
     }
 
+    @Test
+    void creaUtente_normalizesNomeECognome_toTitleCase() {
+        authAsAdmin();
+        var d = dto("utente@acme.it", "RSSMRA85T10A562S", Ruolo.DIPENDENTE);
+        d.setNome("MICHELA");
+        d.setCognome("D'AMICO");
+
+        when(utenteRepository.existsByCodiceFiscale(any())).thenReturn(false);
+        when(utenteRepository.existsByEmail(any())).thenReturn(false);
+        when(passwordEncoder.encode(TEST_PWD)).thenReturn("ENC");
+        ArgumentCaptor<Utente> cap = ArgumentCaptor.forClass(Utente.class);
+        when(utenteRepository.save(any(Utente.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(utenteMapper.toDto(any(Utente.class)))
+                .thenReturn(new UtenteDto(10L, d.getCodiceFiscale(), "Michela", "D'Amico", "utente@acme.it", "DIPENDENTE", d.getPagaOraria()));
+
+        service.creaUtente(d);
+
+        verify(utenteRepository).save(cap.capture());
+        assertThat(cap.getValue().getNome()).isEqualTo("Michela");
+        assertThat(cap.getValue().getCognome()).isEqualTo("D'Amico");
+    }
+
     /* ------------------------- findByCodiceFiscale --------------------- */
 
     @Test
@@ -300,6 +322,22 @@ class UtenteServiceTest {
         assertThat(existing.getPassword()).isEqualTo("ENC2");
         assertThat(existing.getRuolo()).isEqualTo(Ruolo.ADMIN);
 
+        verify(utenteRepository).save(existing);
+    }
+
+    @Test
+    void aggiornaUtente_normalizesNomeECognome_toTitleCase() {
+        Utente existing = ent(1L, "old@acme.it", "RSSMRA85T10A562S", Ruolo.DIPENDENTE);
+        when(utenteRepository.findById(1L)).thenReturn(Optional.of(existing));
+
+        var d = updateDto("old@acme.it", "RSSMRA85T10A562S", Ruolo.DIPENDENTE);
+        d.setNome("ALDO");
+        d.setCognome("DE LUCA");
+
+        service.aggiornaUtente(1L, d);
+
+        assertThat(existing.getNome()).isEqualTo("Aldo");
+        assertThat(existing.getCognome()).isEqualTo("De Luca");
         verify(utenteRepository).save(existing);
     }
 
@@ -500,13 +538,13 @@ class UtenteServiceTest {
         when(utenteRepository.findById(1L)).thenReturn(Optional.of(u));
 
         Map<String, Object> updates = new HashMap<>();
-        updates.put("nome", "Luca");
-        updates.put("cognome", "Bianchi");
+        updates.put("nome", "LUCA");
+        updates.put("cognome", "DI BIANCHI");
         var resp = service.aggiornaParziale(1L, updates);
 
         assertThat(resp.getStatus()).isEqualTo(200);
         assertThat(u.getNome()).isEqualTo("Luca");
-        assertThat(u.getCognome()).isEqualTo("Bianchi");
+        assertThat(u.getCognome()).isEqualTo("Di Bianchi");
         verify(utenteRepository).save(u);
     }
 

@@ -30,6 +30,7 @@ import java.util.List;
 import java.util.Map;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.Locale;
 
 @Service
 public class UtenteService {
@@ -102,8 +103,8 @@ public class UtenteService {
 
         Utente nuovoUtente = new Utente();
         nuovoUtente.setCodiceFiscale(dto.getCodiceFiscale());
-        nuovoUtente.setNome(dto.getNome());
-        nuovoUtente.setCognome(dto.getCognome());
+        nuovoUtente.setNome(normalizePersonName(dto.getNome()));
+        nuovoUtente.setCognome(normalizePersonName(dto.getCognome()));
         nuovoUtente.setEmail(dto.getEmail().toLowerCase().trim());
         nuovoUtente.setPassword(passwordEncoder.encode(dto.getPassword()));
         nuovoUtente.setRuolo(dto.getRuolo());
@@ -154,8 +155,8 @@ public class UtenteService {
             throw new DataIntegrityViolationException("Email già esistente");
         }
 
-        utente.setNome(dto.getNome());
-        utente.setCognome(dto.getCognome());
+        utente.setNome(normalizePersonName(dto.getNome()));
+        utente.setCognome(normalizePersonName(dto.getCognome()));
         utente.setCodiceFiscale(dto.getCodiceFiscale());
         utente.setEmail(dto.getEmail().toLowerCase());
         utente.setRuolo(dto.getRuolo());
@@ -209,13 +210,13 @@ public class UtenteService {
         if (updates.containsKey("nome")) {
             String v = (String) updates.get("nome");
             if (v == null || v.isBlank()) throw new IllegalArgumentException("Nome non valido");
-            u.setNome(v);
+            u.setNome(normalizePersonName(v));
         }
         // cognome
         if (updates.containsKey("cognome")) {
             String v = (String) updates.get("cognome");
             if (v == null || v.isBlank()) throw new IllegalArgumentException("Cognome non valido");
-            u.setCognome(v);
+            u.setCognome(normalizePersonName(v));
         }
         // email (unicità + lowercase)
         if (updates.containsKey("email")) {
@@ -385,6 +386,48 @@ public class UtenteService {
         return BigDecimal.valueOf(pagaOraria)
                 .setScale(2, RoundingMode.HALF_UP)
                 .doubleValue();
+    }
+
+    private String normalizePersonName(String value) {
+        if (value == null) {
+            return null;
+        }
+
+        String normalizedSpacing = value.trim().replaceAll("\\s+", " ");
+        if (normalizedSpacing.isEmpty()) {
+            return normalizedSpacing;
+        }
+
+        if (!shouldNormalizePersonName(normalizedSpacing)) {
+            return normalizedSpacing;
+        }
+
+        String lower = normalizedSpacing.toLowerCase(Locale.ITALIAN);
+        StringBuilder result = new StringBuilder(lower.length());
+        boolean capitalizeNext = true;
+
+        for (char current : lower.toCharArray()) {
+            if (capitalizeNext && Character.isLetter(current)) {
+                result.append(Character.toUpperCase(current));
+                capitalizeNext = false;
+                continue;
+            }
+
+            result.append(current);
+            capitalizeNext = current == ' ' || current == '\'' || current == '-';
+        }
+
+        return result.toString();
+    }
+
+    private boolean shouldNormalizePersonName(String value) {
+        String lettersOnly = value.replaceAll("[^\\p{L}]", "");
+        if (lettersOnly.isEmpty()) {
+            return false;
+        }
+
+        return lettersOnly.equals(lettersOnly.toUpperCase(Locale.ITALIAN))
+                || lettersOnly.equals(lettersOnly.toLowerCase(Locale.ITALIAN));
     }
 
     private void recalculateTimesheetCosts(Utente utente) {

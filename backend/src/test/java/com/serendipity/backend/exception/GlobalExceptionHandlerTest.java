@@ -3,8 +3,10 @@ package com.serendipity.backend.exception;
 import com.serendipity.backend.model.dto.ResponseMessage;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -36,5 +38,19 @@ class GlobalExceptionHandlerTest {
         assertThat(response.getBody()).isNotNull();
         assertThat(response.getBody().getMessage())
                 .isEqualTo("Operazione non completata per un vincolo sui dati.");
+    }
+
+    @Test
+    void handleNoResourceFound_returns404WithoutTreatingItAsInternalError() {
+        NoResourceFoundException ex = new NoResourceFoundException(
+                HttpMethod.GET,
+                "api/auth/validate-sso"
+        );
+
+        ResponseEntity<ResponseMessage> response = handler.handleNoResourceFound(ex);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getMessage()).isEqualTo("Risorsa non trovata");
     }
 }

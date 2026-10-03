@@ -18,6 +18,7 @@ import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.Map;
 import java.util.Objects;
@@ -117,6 +118,14 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .status(HttpStatus.NOT_FOUND)
                 .body(body(HttpStatus.NOT_FOUND, ex.getMessage(), null));
+    }
+
+    // Rotte inesistenti e scansioni automatiche restano normali 404 e non vengono inviate a Sentry.
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<ResponseMessage> handleNoResourceFound(NoResourceFoundException ex) {
+        return ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
+                .body(body(HttpStatus.NOT_FOUND, "Risorsa non trovata", null));
     }
 
     /* ==================== 409 CONFLICT ==================== */
