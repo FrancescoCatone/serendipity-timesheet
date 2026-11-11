@@ -127,9 +127,9 @@
 
     <div class="summary">
         <div><strong>Cliente</strong><span th:text="${report.clienteNome}"></span></div>
-        <div><strong>Periodo</strong><span th:text="${report.anno}"></span></div>
-        <div><strong>Totale ore anno</strong><span th:text="${#numbers.formatDecimal(report.totaleOrario, 1, 2, 'COMMA')} + ' ore'"></span></div>
-        <div th:if="${report.mostraCosto}"><strong>Totale costo anno</strong><span th:text="${#numbers.formatDecimal(report.totaleCosto, 1, 2, 'COMMA')} + ' EUR'"></span></div>
+        <div><strong>Periodo</strong><span th:text="${periodoSelezionato != null ? periodoSelezionato : report.anno}"></span></div>
+        <div><strong>Totale ore</strong><span th:text="${#numbers.formatDecimal(report.totaleOrario, 1, 2, 'COMMA')} + ' ore'"></span></div>
+        <div th:if="${report.mostraCosto}"><strong>Totale costo</strong><span th:text="${#numbers.formatDecimal(report.totaleCosto, 1, 2, 'COMMA')} + ' EUR'"></span></div>
     </div>
 
     <div th:if="${#lists.isEmpty(report.mesi)}">
@@ -173,7 +173,7 @@
     </div>
 
     <div class="annual-summary">
-        Totale report annuale:
+        Totale report:
         <span th:text="${#numbers.formatDecimal(report.totaleOrario, 1, 2, 'COMMA')} + ' ore'"></span>
         <th:block th:if="${report.mostraCosto}">
             &nbsp;|&nbsp;

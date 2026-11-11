@@ -52,6 +52,17 @@ public class ReportExportService {
         return new ExportFile(pdf, buildFilename(snapshot));
     }
 
+    public ExportFile exportClienteMesi(Long clienteId, Integer mese, int anno, boolean mostraCosto, java.util.List<Integer> mesi) {
+        ReportService.validateMesi(mese, anno, mesi);
+        var ordinati = mesi.stream().distinct().sorted().toList();
+        if (ordinati.size() == 1) return exportCliente(clienteId, ordinati.get(0), anno, mostraCosto);
+        var snapshot = reportClientePdfAssembler.buildMesi(clienteId, anno, mostraCosto, ordinati, false);
+        String periodo = ordinati.stream().map(m -> Month.of(m).getDisplayName(TextStyle.FULL, Locale.ITALIAN)).collect(java.util.stream.Collectors.joining(", ")) + " " + anno;
+        byte[] pdf = pdfRenderer.render("pdf/report-cliente-annuale-pdf", Map.of("report", snapshot, "periodoSelezionato", periodo));
+        if (pdf == null || pdf.length == 0) throw new IllegalStateException("Errore durante la generazione del PDF");
+        return new ExportFile(pdf, normalizeFilename("report_cliente_" + snapshot.clienteNome() + "_" + anno + "_" + ordinati.stream().map(String::valueOf).collect(java.util.stream.Collectors.joining("_"))) + ".pdf");
+    }
+
     private String buildFilename(ReportClientePdfSnapshotDto snapshot) {
         String meseNome = Month.of(snapshot.mese()).getDisplayName(TextStyle.FULL, Locale.ITALIAN);
         String base = "report_cliente_" + snapshot.clienteNome() + "_" + meseNome + "_" + snapshot.anno();

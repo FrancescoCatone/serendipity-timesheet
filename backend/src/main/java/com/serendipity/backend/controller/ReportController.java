@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/report")
@@ -43,9 +44,10 @@ public class ReportController {
     public ResponseEntity<ResponseMessage> reportPerCliente(
             @RequestParam Long clienteId,
             @RequestParam(required = false) Integer mese,
-            @RequestParam(required = false) Integer anno
+            @RequestParam(required = false) Integer anno,
+            @RequestParam(required = false) List<Integer> mesi
     ) {
-        ReportClienteDto report = service.reportPerCliente(clienteId, mese, anno);
+        ReportClienteDto report = mesi == null ? service.reportPerCliente(clienteId, mese, anno) : service.reportPerClienteMesi(clienteId, mese, anno, mesi);
         return ResponseEntity.ok(new ResponseMessage(200, "Report cliente generato", report));
     }
 
@@ -55,9 +57,10 @@ public class ReportController {
             @RequestParam Long clienteId,
             @RequestParam(required = false) Integer mese,
             @RequestParam int anno,
-            @RequestParam(defaultValue = "false") boolean mostraCosto
+            @RequestParam(defaultValue = "false") boolean mostraCosto,
+            @RequestParam(required = false) List<Integer> mesi
     ) {
-        var file = exportService.exportCliente(clienteId, mese, anno, mostraCosto);
+        var file = mesi == null ? exportService.exportCliente(clienteId, mese, anno, mostraCosto) : exportService.exportClienteMesi(clienteId, mese, anno, mostraCosto, mesi);
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + file.filename() + "\"")
                 .contentType(MediaType.APPLICATION_PDF)

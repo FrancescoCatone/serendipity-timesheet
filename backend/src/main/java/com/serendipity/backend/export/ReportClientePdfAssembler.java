@@ -57,11 +57,15 @@ public class ReportClientePdfAssembler {
     }
 
     public ReportClientePdfAnnualSnapshotDto buildAnnual(Long clienteId, int anno, boolean mostraCosto) {
+        return buildMesi(clienteId, anno, mostraCosto, java.util.stream.IntStream.rangeClosed(1, 12).boxed().toList(), true);
+    }
+
+    public ReportClientePdfAnnualSnapshotDto buildMesi(Long clienteId, int anno, boolean mostraCosto, List<Integer> selezionati, boolean annuale) {
         Cliente cliente = clienteRepository.findById(clienteId)
                 .orElseThrow(() -> new EntityNotFoundException("Cliente non trovato"));
 
         List<ReportClientePdfAnnualSnapshotDto.MeseReport> mesi = new ArrayList<>();
-        for (int mese = 1; mese <= 12; mese++) {
+        for (int mese : selezionati.stream().distinct().sorted().toList()) {
             List<ReportClientePdfSnapshotDto.Riga> righe = rigaRepository.reportClientePdfDettaglio(clienteId, mese, anno)
                     .stream()
                     .map(this::toSnapshotRow)
@@ -71,7 +75,7 @@ public class ReportClientePdfAssembler {
             BigDecimal totaleOrarioMese = scale(totaliMese.totaleOrario());
             BigDecimal totaleCostoMese = scale(totaliMese.totaleCosto());
 
-            if (righe.isEmpty() && totaleOrarioMese.signum() == 0 && totaleCostoMese.signum() == 0) {
+            if (annuale && righe.isEmpty() && totaleOrarioMese.signum() == 0 && totaleCostoMese.signum() == 0) {
                 continue;
             }
 
@@ -84,7 +88,9 @@ public class ReportClientePdfAssembler {
             ));
         }
 
-        TotaliDto totaliAnnuali = rigaRepository.totaleReportCliente(clienteId, null, anno);
+        TotaliDto totaliAnnuali = annuale ? rigaRepository.totaleReportCliente(clienteId, null, anno) : null;
+        BigDecimal ore = annuale ? scale(totaliAnnuali.totaleOrario()) : mesi.stream().map(ReportClientePdfAnnualSnapshotDto.MeseReport::totaleOrario).reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal costo = annuale ? scale(totaliAnnuali.totaleCosto()) : mesi.stream().map(ReportClientePdfAnnualSnapshotDto.MeseReport::totaleCosto).reduce(BigDecimal.ZERO, BigDecimal::add);
 
         return new ReportClientePdfAnnualSnapshotDto(
                 cliente.getId(),
@@ -92,8 +98,8 @@ public class ReportClientePdfAssembler {
                 anno,
                 LocalDateTime.now(),
                 mesi,
-                scale(totaliAnnuali.totaleOrario()),
-                scale(totaliAnnuali.totaleCosto()),
+                ore,
+                costo,
                 mostraCosto
         );
     }

@@ -84,6 +84,30 @@ public class ReportService {
         );
     }
 
+    public static void validateMesi(Integer mese, Integer anno, List<Integer> mesi) {
+        if (mese != null || anno == null || anno < 2000 || mesi == null || mesi.isEmpty() || mesi.stream().anyMatch(m -> m == null || m < 1 || m > 12))
+            throw new IllegalArgumentException("Seleziona mesi validi e un anno valido, senza specificare mese");
+    }
+
+    public ReportClienteDto reportPerClienteMesi(Long clienteId, Integer mese, Integer anno, List<Integer> mesi) {
+        validateMesi(mese, anno, mesi);
+        if (!currentUserIsAdmin()) throw new AccessDeniedException("Solo ADMIN puo consultare il report per cliente");
+        Cliente cliente = clienteRepository.findById(clienteId).orElseThrow(() -> new EntityNotFoundException("Cliente non trovato"));
+        var dettaglio = new java.util.LinkedHashMap<Long, ReportClienteDipendenteDto>();
+        double ore = 0, costo = 0;
+        for (int m : mesi.stream().distinct().sorted().toList()) {
+            for (var item : rigaRepository.reportClientePerDipendente(clienteId, m, anno)) {
+                dettaglio.merge(item.utenteId(), new ReportClienteDipendenteDto(item.utenteId(), item.nome(), item.cognome(), item.oreTotali(), item.costoTotale()),
+                        (a, b) -> new ReportClienteDipendenteDto(a.utenteId(), a.nome(), a.cognome(), a.oreTotali() + b.oreTotali(), a.costoTotale() + b.costoTotale()));
+            }
+            TotaliDto totali = rigaRepository.totaleReportCliente(clienteId, m, anno);
+            ore += totali.totaleOrario();
+            costo += totali.totaleCosto();
+        }
+        var righe = dettaglio.values().stream().map(x -> new ReportClienteDipendenteDto(x.utenteId(), x.nome(), x.cognome(), round(x.oreTotali()), round(x.costoTotale()))).toList();
+        return new ReportClienteDto(cliente.getId(), cliente.getNome(), null, anno, round(ore), round(costo), righe);
+    }
+
     public ReportClienteGiornoDto reportPerClienteGiorno(Long clienteId, LocalDate data) {
         if (!currentUserIsAdmin()) {
             throw new AccessDeniedException("Solo ADMIN puo consultare il report giornaliero per cliente");

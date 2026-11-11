@@ -87,6 +87,8 @@ function ReportPage() {
 
     const [myProfile, setMyProfile] = useState<ProfiloUtenteDto | null>(null);
     const [mostraCostoPdf, setMostraCostoPdf] = useState(false);
+    const [mesiCliente, setMesiCliente] = useState<number[]>([]);
+    const [reportPeriodo, setReportPeriodo] = useState('');
 
     useEffect(() => {
         const loadData = async () => {
@@ -170,13 +172,19 @@ function ReportPage() {
             return 'Periodo non selezionato';
         }
 
+        if (mode === 'cliente' && mesiCliente.length) {
+            return `${MONTH_OPTIONS.filter(item => mesiCliente.includes(item.value)).map(item => item.label).join(', ')} ${filters.anno}`;
+        }
+
+        if (mode === 'cliente') return `Anno ${filters.anno}`;
+
         if (!filters.mese) {
             return `Anno ${filters.anno}`;
         }
 
         const month = MONTH_OPTIONS.find((item) => String(item.value) === filters.mese);
         return month ? `${month.label} ${filters.anno}` : `Periodo ${filters.mese}/${filters.anno}`;
-    }, [filters.anno, filters.data, filters.mese, mode]);
+    }, [filters.anno, filters.data, filters.mese, mode, mesiCliente]);
 
     const handleReset = () => {
         setMode(isAdmin ? 'cliente' : 'dipendente');
@@ -188,6 +196,7 @@ function ReportPage() {
             data: '',
         });
         setMostraCostoPdf(false);
+        setMesiCliente([]);
         resetResults();
     };
 
@@ -237,10 +246,11 @@ function ReportPage() {
                 const response = await getReportClienteApi({
                     clienteId: Number(filters.clienteId),
                     anno,
-                    mese,
+                    mesi: mesiCliente.length ? [...mesiCliente].sort((a, b) => a - b).join(',') : undefined,
                 });
 
                 setReportCliente(response.data ?? null);
+                setReportPeriodo(selectedPeriodoLabel);
                 toast.success(response.message || 'Report cliente generato con successo');
                 return;
             }
@@ -283,7 +293,7 @@ function ReportPage() {
             setExportingPdf(true);
             const { blob, filename } = await exportReportClientePdfApi({
                 clienteId: Number(filters.clienteId),
-                mese: filters.mese ? Number(filters.mese) : undefined,
+                mesi: mesiCliente.length ? [...mesiCliente].sort((a, b) => a - b).join(',') : undefined,
                 anno: Number(filters.anno),
                 mostraCosto: mostraCostoPdf,
             });
@@ -359,7 +369,19 @@ function ReportPage() {
                                 />
                             </div>
 
-                            <div className="form-group">
+                            {mode === 'cliente' ? (
+                            <fieldset className="form-group">
+                                <legend>Mesi</legend>
+                                <label><input type="checkbox" checked={mesiCliente.length === 0} onChange={() => setMesiCliente([])} disabled={loadingSupportData || loadingReport || exportingPdf} /> Tutto l'anno</label>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
+                                    {MONTH_OPTIONS.map(month => (
+                                        <label key={month.value}>
+                                            <input type="checkbox" checked={mesiCliente.includes(month.value)} disabled={loadingSupportData || loadingReport || exportingPdf} onChange={() => setMesiCliente(prev => prev.includes(month.value) ? prev.filter(m => m !== month.value) : [...prev, month.value])} /> {month.label}
+                                        </label>
+                                    ))}
+                                </div>
+                            </fieldset>
+                            ) : <div className="form-group">
                                 <label htmlFor="mese">Mese</label>
                                 <select
                                     id="mese"
@@ -376,7 +398,7 @@ function ReportPage() {
                                         </option>
                                     ))}
                                 </select>
-                            </div>
+                            </div>}
                         </>
                     )}
 
@@ -493,7 +515,7 @@ function ReportPage() {
                 <div className="table-card" style={{ marginTop: '1.5rem' }}>
                     <PageHeader
                         title={`Report cliente - ${reportCliente.clienteNome}`}
-                        subtitle={selectedPeriodoLabel}
+                        subtitle={reportPeriodo}
                     />
 
                     <div className="dashboard-grid" style={{ padding: '0 24px 24px 24px' }}>

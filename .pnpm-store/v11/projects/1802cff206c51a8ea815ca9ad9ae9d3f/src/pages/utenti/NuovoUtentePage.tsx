@@ -216,7 +216,7 @@ function NuovoUtentePage() {
                                 name="pagaOraria"
                                 type="number"
                                 min="0"
-                                step="0.50"
+                                step="0.01"
                                 value={form.pagaOraria}
                                 onChange={handleChange}
                                 disabled={loading || form.ruolo !== 'DIPENDENTE'}

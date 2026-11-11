@@ -5,6 +5,7 @@ import type { ReportClienteDto, ReportClienteGiornoDto, ReportDipendenteDto } fr
 type ReportClienteParams = {
     clienteId: number;
     mese?: number;
+    mesi?: string;
     anno?: number;
 };
 
@@ -64,6 +65,7 @@ export async function getReportClienteGiornoApi(params: ReportClienteGiornoParam
 export async function exportReportClientePdfApi(params: {
     clienteId: number;
     mese?: number;
+    mesi?: string;
     anno: number;
     mostraCosto?: boolean;
 }): Promise<{ blob: Blob; filename: string }> {
